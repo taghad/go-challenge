@@ -83,8 +83,7 @@ func (s *Service) Add(ctx context.Context, events []Event) error {
 // The flight is shared, so it must not depend on the context of the caller that
 // happened to start it. It runs with context.WithoutCancel through DoChan, and each
 // caller waits on its own context, so one cancelled request does not fail the others,
-// and the result is still cached. Nothing bounds a flight's duration yet: the store
-// operation deadline comes in step 9.
+// and the result is still cached.
 func (s *Service) Estimate(ctx context.Context, segment string) (Estimate, error) {
 	if err := ValidateSegment(segment); err != nil {
 		return Estimate{}, err

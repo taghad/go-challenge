@@ -5,6 +5,7 @@ package redisstore
 import (
 	"context"
 	"strconv"
+	"time"
 
 	"github.com/redis/go-redis/v9"
 
@@ -15,13 +16,21 @@ var _ estimator.Store = (*Store)(nil)
 
 // Store implements estimator.Store. It takes a redis.UniversalClient, so the same
 // code works if Redis is later clustered.
+//
+// Every operation applies its own deadline inside the Store, whatever context the
+// caller passes. The estimate path needs this: it calls Count with a context that has
+// no deadline, so that one cancelled request does not fail the others, and this
+// deadline is what ends a slow flight and frees its slot.
 type Store struct {
-	client redis.UniversalClient
+	client    redis.UniversalClient
+	opTimeout time.Duration
 }
 
-// New returns a Store that uses the given client.
-func New(client redis.UniversalClient) *Store {
-	return &Store{client: client}
+// New returns a Store that uses the given client, with opTimeout as the deadline of
+// each store operation. The client must come from NewClient, or otherwise respect
+// context deadlines.
+func New(client redis.UniversalClient, opTimeout time.Duration) *Store {
+	return &Store{client: client, opTimeout: opTimeout}
 }
 
 // key holds the segment, the bucket size in seconds, and the bucket start in Unix
@@ -37,6 +46,8 @@ func key(segment string, bucket estimator.Bucket) string {
 // absolute, so repeated writes set the same value. On a Redis Cluster, a batch that
 // spans several slots is atomic per slot, which still keeps each key with its expiry.
 func (s *Store) Add(ctx context.Context, bucket estimator.Bucket, events []estimator.Event) error {
+	ctx, cancel := context.WithTimeout(ctx, s.opTimeout)
+	defer cancel()
 	users := make(map[string][]any)
 	for _, event := range events {
 		users[event.Segment] = append(users[event.Segment], event.UserID)
@@ -56,6 +67,8 @@ func (s *Store) Add(ctx context.Context, bucket estimator.Bucket, events []estim
 // several buckets is counted once, because PFCOUNT over several keys counts their
 // union. A key that does not exist counts as empty.
 func (s *Store) Count(ctx context.Context, segment string, buckets []estimator.Bucket) (uint64, error) {
+	ctx, cancel := context.WithTimeout(ctx, s.opTimeout)
+	defer cancel()
 	keys := make([]string, len(buckets))
 	for i, bucket := range buckets {
 		keys[i] = key(segment, bucket)
@@ -69,5 +82,7 @@ func (s *Store) Count(ctx context.Context, segment string, buckets []estimator.B
 
 // Ping reports whether Redis is reachable.
 func (s *Store) Ping(ctx context.Context) error {
+	ctx, cancel := context.WithTimeout(ctx, s.opTimeout)
+	defer cancel()
 	return s.client.Ping(ctx).Err()
 }

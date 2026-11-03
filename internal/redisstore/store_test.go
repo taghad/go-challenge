@@ -25,9 +25,22 @@ func testAddr(t *testing.T) string {
 	return addr
 }
 
+// The client timeouts in tests are long, so that only the test that wants a timeout
+// gets one, and a slow machine fails nothing else. They are test values, not defaults.
+const (
+	testClientTimeout = 5 * time.Second
+	testOpTimeout     = 5 * time.Second
+)
+
 func newTestClient(t *testing.T) redis.UniversalClient {
 	t.Helper()
-	client := redis.NewUniversalClient(&redis.UniversalOptions{Addrs: []string{testAddr(t)}})
+	client := NewClient(ClientConfig{
+		Addr:         testAddr(t),
+		DialTimeout:  testClientTimeout,
+		ReadTimeout:  testClientTimeout,
+		WriteTimeout: testClientTimeout,
+		PoolTimeout:  testClientTimeout,
+	})
 	t.Cleanup(func() { client.Close() })
 	return client
 }
@@ -99,7 +112,7 @@ func TestKeyFormat(t *testing.T) {
 
 func TestAddIsIdempotent(t *testing.T) {
 	client := newTestClient(t)
-	store := New(client)
+	store := New(client, testOpTimeout)
 	segment := newSegment(t, client)
 	bucket := newWindow(t).Current(time.Now())
 	buckets := []estimator.Bucket{bucket}
@@ -115,7 +128,7 @@ func TestAddIsIdempotent(t *testing.T) {
 
 func TestCountIsUnionAcrossBuckets(t *testing.T) {
 	client := newTestClient(t)
-	store := New(client)
+	store := New(client, testOpTimeout)
 	segment := newSegment(t, client)
 	buckets := newWindow(t).Buckets(time.Now())
 
@@ -128,7 +141,7 @@ func TestCountIsUnionAcrossBuckets(t *testing.T) {
 
 func TestCountKeepsSegmentsApart(t *testing.T) {
 	client := newTestClient(t)
-	store := New(client)
+	store := New(client, testOpTimeout)
 	sports := newSegment(t, client)
 	news := sports + "-news"
 	bucket := newWindow(t).Current(time.Now())
@@ -144,12 +157,12 @@ func TestCountOfUnknownSegmentIsZero(t *testing.T) {
 	client := newTestClient(t)
 	segment := newSegment(t, client)
 
-	wantCount(t, New(client), segment, newWindow(t).Buckets(time.Now()), 0)
+	wantCount(t, New(client, testOpTimeout), segment, newWindow(t).Buckets(time.Now()), 0)
 }
 
 func TestAddSetsExpectedExpiryOnEveryKey(t *testing.T) {
 	client := newTestClient(t)
-	store := New(client)
+	store := New(client, testOpTimeout)
 	ctx := context.Background()
 	first := newSegment(t, client)
 	second := first + "-second"
@@ -178,7 +191,7 @@ func TestAddSetsExpectedExpiryOnEveryKey(t *testing.T) {
 
 func TestCountExcludesBucketOutsideWindow(t *testing.T) {
 	client := newTestClient(t)
-	store := New(client)
+	store := New(client, testOpTimeout)
 	ctx := context.Background()
 	segment := newSegment(t, client)
 	window := newWindow(t)
@@ -244,7 +257,7 @@ func TestAddWritesEachSegmentOnceInOneTransaction(t *testing.T) {
 		{UserID: "u2", Segment: second},
 		{UserID: "u3", Segment: first},
 	}
-	mustAdd(t, New(client), bucket, batch)
+	mustAdd(t, New(client, testOpTimeout), bucket, batch)
 
 	if len(recorder.pipelines) != 1 {
 		t.Fatalf("pipelines = %d, want 1", len(recorder.pipelines))
@@ -277,7 +290,7 @@ func TestAddWritesEachSegmentOnceInOneTransaction(t *testing.T) {
 }
 
 func TestPing(t *testing.T) {
-	if err := New(newTestClient(t)).Ping(context.Background()); err != nil {
+	if err := New(newTestClient(t), testOpTimeout).Ping(context.Background()); err != nil {
 		t.Errorf("Ping: %v", err)
 	}
 }
