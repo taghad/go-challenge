@@ -296,7 +296,8 @@ repository or DTO layers.
 ### Running with Compose
 
 `docker compose up --build` starts ES and Redis. The ES image is a static binary
-(`CGO_ENABLED=0`) on distroless, running as a non-root user.
+(`CGO_ENABLED=0`) on `gcr.io/distroless/static-debian12:nonroot`, running as a
+non-root user.
 
 - ES starts only after Redis is healthy, and restarts on failure at most 5 times `[E]`.
   An invalid configuration therefore stops after those restarts, with the error in
@@ -498,12 +499,13 @@ test. Ingestion throughput comes from the spike test.
 
 `cmd/uss` simulates USS and is described [below](#uss-simulator).
 
-- **Ramp:** the offered rate doubles at each step until saturation. Each step is one
+- **Ramp:** the offered rate starts at 1000 events per second and doubles at each step
+  until saturation, with batches of 500 and 30 s per step `[E]`. Each step is one
   `steady` run of `cmd/uss`.
 - **Saturation point:** the first step where the first-attempt acceptance falls below
-  99% of offered events, or ingestion p99 exceeds 500 ms `[E]`. Retries do not count
-  here, because enough retries could hide an overload. Final acceptance is reported
-  separately.
+  99% of offered events, or the p99 latency of first attempts exceeds 500 ms `[E]`.
+  Retries do not count here, because enough retries could hide an overload. Final
+  acceptance is reported separately.
 - **Reported:** highest sustained rate, `503` rate, Redis and ES resource use.
 - **Boundary burst:** segments are queried continuously across a bucket boundary,
   when all cache entries become invalid at once. This test runs in process with
@@ -592,7 +594,7 @@ because no real USS data exists to derive them from.
 | Rule 3: Redis memory at 1h, 500 dense segments | at most 2.5 GB | Owner decision, assumption |
 | Rule 4: recomputation share of Redis time at 1h | at most 20% | Owner decision, assumption |
 | Saturation: first-attempt acceptance of offered events | below 99% | Owner decision, assumption |
-| Saturation: ingestion p99 | above 500 ms | Owner decision, assumption |
+| Saturation: ingestion p99 of first attempts | above 500 ms | Owner decision, assumption |
 | After a spike: estimate between acknowledged and attempted users | margin of 2.43% | Owner decision, assumption |
 
 ## Implementation plan
