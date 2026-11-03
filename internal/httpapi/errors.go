@@ -61,6 +61,10 @@ func writeError(c *gin.Context, err error) {
 			Index:   &invalid.Index,
 			Field:   invalid.Field,
 		})
+	case errors.Is(err, estimator.ErrInvalidSegment):
+		writeDetail(c, http.StatusBadRequest, errorDetail{Code: "invalid_segment", Message: err.Error()})
+	case errors.Is(err, estimator.ErrOverloaded):
+		writeUnavailable(c, "overloaded", err.Error())
 	default:
 		slog.Error("store request failed", "error", err)
 		writeUnavailable(c, "store_unavailable", "the store is unavailable")

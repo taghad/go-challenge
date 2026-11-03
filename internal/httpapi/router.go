@@ -24,5 +24,6 @@ func NewRouter(service *estimator.Service, config Config) *gin.Engine {
 	a := &api{service: service, config: config}
 	router := gin.New()
 	router.POST("/v1/events", a.addEvents)
+	router.GET("/v1/segments/:segment/estimate", a.estimate)
 	return router
 }
