@@ -494,12 +494,22 @@ agree, rule 1 will hold, and the choice will depend on rules 2 to 4.
 
 ### 1h and 6h benchmark
 
-- Uncached `PFCOUNT` latency (p50 and p99), on real Redis.
+It runs with `docker compose run --rm bench`, on 500 segments.
+
+- Uncached `PFCOUNT` latency (p50 and p99), on real Redis, from 2000 calls `[E]` to
+  `Store.Count` per bucket size, one at a time, with the default client timeouts.
 - Redis memory for fully dense keys, on real Redis. A benchmark-only Redis uses
-  `hll-sparse-max-bytes 0` to force the worst case, and the dense encoding is
-  checked with `PFDEBUG ENCODING`.
+  `hll-sparse-max-bytes 0` to force the worst case, and the dense encoding of every
+  key is checked with `PFDEBUG ENCODING`.
+- The registers hold real values. Each bucket has one template with 20,000 users
+  `[E]`, which `COPY` gives to all 500 segments, because writing every user to every
+  segment would take too long.
 - The recomputation share of Redis time is calculated from the measured `PFCOUNT`
-  latency and the recompute rate. It is not run as a separate experiment.
+  latency and the recompute rate. It is not run as a separate experiment. It is 16.7
+  recomputes per second (500 segments with a 30 s TTL, per instance) times the mean time
+  inside Redis, from `usec_per_call` in `INFO commandstats`. That excludes the network,
+  so it is the Redis time itself. The share from the client latency is reported as well,
+  but rule 4 uses the Redis-side value.
 - The default is then chosen with the [decision rule](#bucket-size).
 
 Measurements use real Redis only for HLL accuracy, this benchmark, and the spike

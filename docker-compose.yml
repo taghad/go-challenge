@@ -101,6 +101,44 @@ services:
       redis-test:
         condition: service_healthy
 
+  # Used only by the bench service, which flushes it. hll-sparse-max-bytes 0 makes
+  # every key dense, which is the worst case for memory. It has no maxmemory, so that
+  # the benchmark measures the memory instead of hitting a limit.
+  redis-bench:
+    image: redis:8.2.11
+    profiles: ["bench"]
+    command:
+      - redis-server
+      - --appendonly
+      - "no"
+      - --save
+      - ""
+      - --hll-sparse-max-bytes
+      - "0"
+    tmpfs:
+      - /data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 2s
+      retries: 15
+
+  # Runs only on request: docker compose run --rm bench
+  bench:
+    image: golang:1.27.3
+    profiles: ["bench"]
+    working_dir: /src
+    command: ["go", "test", "-count=1", "-v", "-timeout", "60m", "-run", "TestMeasureBucketBenchmark", "./internal/redisstore/"]
+    environment:
+      REDIS_BENCH_ADDR: redis-bench:6379
+    volumes:
+      - .:/src
+      - go-mod-cache:/go/pkg/mod
+      - go-build-cache:/root/.cache/go-build
+    depends_on:
+      redis-bench:
+        condition: service_healthy
+
 volumes:
   redis-data:
   go-mod-cache:
