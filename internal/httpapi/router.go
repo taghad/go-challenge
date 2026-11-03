@@ -9,7 +9,8 @@ import (
 
 // Config holds the limits of the HTTP layer.
 type Config struct {
-	MaxBodyBytes int64 // largest body POST /v1/events accepts
+	MaxBodyBytes      int64 // largest body POST /v1/events accepts
+	MaxInflightIngest int   // concurrent POST /v1/events requests
 }
 
 // api holds what the handlers need. It depends on the concrete service, because the
@@ -23,7 +24,7 @@ type api struct {
 func NewRouter(service *estimator.Service, config Config) *gin.Engine {
 	a := &api{service: service, config: config}
 	router := gin.New()
-	router.POST("/v1/events", a.addEvents)
+	router.POST("/v1/events", ingestLimit(config.MaxInflightIngest), a.addEvents)
 	router.GET("/v1/segments/:segment/estimate", a.estimate)
 	return router
 }

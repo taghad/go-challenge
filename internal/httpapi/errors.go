@@ -17,6 +17,7 @@ const retryAfterSeconds = "1"
 var (
 	errMalformedBody = errors.New("request body is not valid JSON")
 	errBodyTooLarge  = errors.New("request body is too large")
+	errIngestionFull = errors.New("too many ingestion requests in flight")
 )
 
 // errorResponse is the body of every error. Index and Field are set only for an
@@ -63,7 +64,7 @@ func writeError(c *gin.Context, err error) {
 		})
 	case errors.Is(err, estimator.ErrInvalidSegment):
 		writeDetail(c, http.StatusBadRequest, errorDetail{Code: "invalid_segment", Message: err.Error()})
-	case errors.Is(err, estimator.ErrOverloaded):
+	case errors.Is(err, estimator.ErrOverloaded), errors.Is(err, errIngestionFull):
 		writeUnavailable(c, "overloaded", err.Error())
 	default:
 		slog.Error("store request failed", "error", err)

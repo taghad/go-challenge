@@ -171,7 +171,7 @@ func TestAddEventsBodyLimit(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			store := &fakeStore{}
 			service := newService(t, store, time.Unix(testBoundary, 0), testMaxInflight)
-			router := NewRouter(service, Config{MaxBodyBytes: limit})
+			router := NewRouter(service, Config{MaxBodyBytes: limit, MaxInflightIngest: testMaxInflight})
 
 			recorder := serve(router, postEvents(tt.body))
 

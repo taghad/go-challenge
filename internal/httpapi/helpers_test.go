@@ -85,7 +85,7 @@ func newService(t *testing.T, store estimator.Store, now time.Time, maxInflight 
 func newTestRouter(t *testing.T, store estimator.Store) http.Handler {
 	t.Helper()
 	service := newService(t, store, time.Unix(testBoundary, 0), testMaxInflight)
-	return NewRouter(service, Config{MaxBodyBytes: testMaxBody})
+	return NewRouter(service, Config{MaxBodyBytes: testMaxBody, MaxInflightIngest: testMaxInflight})
 }
 
 func serve(router http.Handler, request *http.Request) *httptest.ResponseRecorder {
