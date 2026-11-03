@@ -11,7 +11,10 @@
 - Label every number as measured or estimated. Never present a guess as measured.
 - Work on `feat/estimation-service`. Do not push. Merge into `main` with
   `--ff-only`, without squashing, only after the owner approves.
-- Do one approved step, then stop and wait for approval.
+- Do the approved steps in the prompt, one commit per step, with tests passing at
+  every commit, then stop. Report usage in one line per commit. Run a mutation
+  check only when the prompt asks for it.
+- Technical decisions are made by the owner. If one is needed, stop and ask.
 
 ## Usage report
 
