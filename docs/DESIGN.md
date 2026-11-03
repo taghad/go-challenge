@@ -233,7 +233,8 @@ delay writes. Each ES instance caches estimates in memory.
 
 Redis load: 500 segments with a 30s TTL is 16.7 recomputes per second per instance.
 With the measured time inside Redis, that is 1.44% of Redis time for 6h buckets and
-6.26% for 1h buckets `[calculated]`.
+6.26% for 1h buckets `[calculated]`. Local compose uses a 5s TTL, so the same queries there
+would be 100 recomputes per second, or about 37.6% at 1h `[calculated]`.
 
 ### Timeouts
 
@@ -324,6 +325,10 @@ compose uses `5s`.
 All output is rendered with `textContent`, so nothing a user typed or the server
 returned can become markup. The segment is encoded with `encodeURIComponent` in the
 URL path. Serving the page does not touch Redis, so it loads during a Redis outage.
+
+The page links to `GET /report`, a second embedded page that `cmd/report` generates from
+`docs/results`. It has no JavaScript, framework, CDN, or external fonts, and it does not touch
+Redis either.
 
 ## Failure modes
 
@@ -686,6 +691,8 @@ Each step is one small commit, with its tests.
     decision rule selects 1h
 23. `docs: add measured results and final decisions`
 24. `docs: link design and run instructions from README`
+25. `feat(report): add a static test report and GET /report`
+26. `docs: link the test report from README`
 
 Work happens on `feat/estimation-service` and is not pushed. After approval, it
 is merged into `main` with `--ff-only`, without squashing.
@@ -837,5 +844,9 @@ imported packages. One remains at module level: GO-2026-5932, for the unmaintain
 - **Accuracy has 5 sets at each size.** One error at 1,000,000 users was 2.11%, close to the
   test's limit of 2.43%.
 - **The recomputation share is calculated**, from the measured time per call. All 500 segments
-  were not queried continuously in a separate run.
+  were not queried continuously in a separate run. Its 6.26% uses the default 30s TTL, and the
+  5s TTL of local compose would be about 37.6% under the same queries `[calculated]`.
+- **Nothing was measured above 1,000,000 distinct users.** The challenge asks for millions.
+  HLL memory does not grow with users, but the accuracy above that size is only the 0.81%
+  from Redis documentation `[E]`.
 - **Undercount depends on an assumed traffic model.** Real USS data should replace it.
