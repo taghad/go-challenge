@@ -131,6 +131,25 @@ func TestRetryIsReportedSeparatelyFromFirstAttempt(t *testing.T) {
 	}
 }
 
+func TestTimelineCountsAttemptsBySecondOfTheRun(t *testing.T) {
+	r := newRecorder(newUserTracker(10, 1))
+
+	r.attempt(true, rejected, 10, 20*time.Millisecond, 100*time.Millisecond)
+	r.attempt(true, acknowledged, 10, 30*time.Millisecond, 900*time.Millisecond)
+	r.attempt(false, rejected, 10, 5*time.Millisecond, 2100*time.Millisecond)
+	r.attempt(false, acknowledged, 10, 6*time.Millisecond, 2200*time.Millisecond)
+
+	want := []timelineSecond{
+		{Second: 0, FirstAttempts: 2, FirstAcknowledged: 1, Rejected503: 1, MaxLatencyMs: 30},
+		{Second: 1},
+		{Second: 2, Retries: 2, RetriesAcknowledged: 1, Rejected503: 1, MaxLatencyMs: 6},
+	}
+	got := r.report(testOptions("http://unused"), 1, false).Timeline
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("timeline = %+v, want %+v", got, want)
+	}
+}
+
 func TestRetriesStopAtTheLimit(t *testing.T) {
 	es := newFakeES(t, func(_ int, w http.ResponseWriter, _ *http.Request) { reject503(w) })
 

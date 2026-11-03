@@ -124,7 +124,7 @@ func (s *simulator) sendBatch(index int, start, scheduled time.Time) {
 	for attempt := 0; ; attempt++ {
 		result, retryAfter := s.send(b.body)
 		end := time.Now()
-		s.recorder.attempt(attempt == 0, result, len(b.users), end.Sub(attemptScheduled))
+		s.recorder.attempt(attempt == 0, result, len(b.users), end.Sub(attemptScheduled), end.Sub(start))
 		switch {
 		case result == acknowledged:
 			s.recorder.acknowledge(b, end.Sub(scheduled))

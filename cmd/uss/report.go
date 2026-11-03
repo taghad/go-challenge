@@ -23,6 +23,7 @@ type report struct {
 	Final                   finalReport       `json:"final"`
 	DistinctUsers           userCounts        `json:"distinct_users"`
 	Segments                []segmentCounts   `json:"segments,omitempty"`
+	Timeline                []timelineSecond  `json:"timeline,omitempty"`
 	EstimateCheck           *estimateCheck    `json:"estimate_check,omitempty"`
 }
 
@@ -61,6 +62,18 @@ type userCounts struct {
 type segmentCounts struct {
 	Segment string `json:"segment"`
 	userCounts
+}
+
+// timelineSecond counts the attempts that finished in one second of a run, counted from
+// its start. It shows when a run recovers after a burst, which the totals cannot show.
+type timelineSecond struct {
+	Second              int     `json:"second"`
+	FirstAttempts       int64   `json:"first_attempts"`
+	FirstAcknowledged   int64   `json:"first_acknowledged"`
+	Retries             int64   `json:"retries"`
+	RetriesAcknowledged int64   `json:"retries_acknowledged"`
+	Rejected503         int64   `json:"rejected_503"`
+	MaxLatencyMs        float64 `json:"max_latency_ms"`
 }
 
 type latencySummary struct {
@@ -228,6 +241,7 @@ type recorder struct {
 	finalSamples []time.Duration
 	sendLag      []time.Duration
 	lastSend     time.Duration
+	timeline     []timelineSecond
 }
 
 func newRecorder(users *userTracker) *recorder {
@@ -245,7 +259,8 @@ func (r *recorder) firstSend(b batch, start, scheduled time.Time) {
 	r.final.Events += int64(len(b.users))
 }
 
-func (r *recorder) attempt(first bool, result outcome, events int, latency time.Duration) {
+// attempt records one finished attempt. finishedAt is counted from the start of the run.
+func (r *recorder) attempt(first bool, result outcome, events int, latency, finishedAt time.Duration) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if first {
@@ -253,6 +268,27 @@ func (r *recorder) attempt(first bool, result outcome, events int, latency time.
 	} else {
 		r.retries.add(result, events, latency)
 	}
+	second := int(finishedAt / time.Second)
+	for len(r.timeline) <= second {
+		r.timeline = append(r.timeline, timelineSecond{Second: len(r.timeline)})
+	}
+	t := &r.timeline[second]
+	switch {
+	case first:
+		t.FirstAttempts++
+		if result == acknowledged {
+			t.FirstAcknowledged++
+		}
+	default:
+		t.Retries++
+		if result == acknowledged {
+			t.RetriesAcknowledged++
+		}
+	}
+	if result == rejected {
+		t.Rejected503++
+	}
+	t.MaxLatencyMs = max(t.MaxLatencyMs, milliseconds(latency))
 }
 
 func (r *recorder) acknowledge(b batch, latency time.Duration) {
@@ -306,5 +342,6 @@ func (r *recorder) report(o options, scheduledBatches int, interrupted bool) rep
 		Final:                   r.final,
 		DistinctUsers:           r.users.total(),
 		Segments:                r.users.perSegment(o.segmentPrefix),
+		Timeline:                r.timeline,
 	}
 }

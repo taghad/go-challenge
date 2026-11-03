@@ -83,6 +83,7 @@ func runRamp(ctx context.Context, o options, client *http.Client) rampReport {
 		firstBatch += uint64(run.ScheduledBatches)
 		run.Config = nil
 		run.Segments = nil
+		run.Timeline = nil
 		current := newRampStep(run)
 		result.Steps = append(result.Steps, current)
 		if run.Interrupted {

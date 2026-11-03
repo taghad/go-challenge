@@ -532,8 +532,13 @@ test. Ingestion throughput comes from the spike test.
   acceptance is reported separately.
 - **Reported:** highest sustained rate, `503` rate, Redis and ES resource use.
   `scripts/spike.sh` only collects `docker stats`, for the same period.
-- **Burst run:** after the ramp, one `burst` run at half the highest sustained rate, 10x
-  for 5 s in a 30 s run `[E]`. It is reported, and it plays no part in saturation.
+- **Burst run:** after the ramp, one `burst` run at a base of 204,800 events per second,
+  10x for 5 s in a 30 s run `[E]`, which peaks at 2,048,000. The base is an owner decision.
+  It is not half of the highest sustained rate, because that peak of 5.12M events per
+  second ended the simulator with an out-of-memory kill on the test machine. It is reported,
+  and it plays no part in saturation. The time to recover runs from the end of the peak to
+  the start of the first second of the report's `timeline` from which every attempt, first
+  or retry, is acknowledged.
 - **Boundary burst:** segments are queried continuously across a bucket boundary,
   when all cache entries become invalid at once. This test runs in process with
   real Redis and an injected clock, so it does not wait for a real boundary. It runs
@@ -613,6 +618,7 @@ the value ES sends.
 - Final results per batch: acknowledged, abandoned and failed events, final acceptance,
   and the latency to the acknowledgement.
 - Distinct acknowledged users and distinct attempted users, in total and per segment.
+- A timeline of the attempts that finished in each second of the run, except in a ramp.
 
 **Latency runs from the scheduled send time**, so a late send counts as latency and is
 not hidden. A retry is scheduled at the end of its wait, so its latency excludes that
