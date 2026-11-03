@@ -7,6 +7,7 @@
 > docker compose run --rm uss -rate 1000 -duration 30s  # send simulated USS traffic
 > ```
 >
+> [Test report](docs/TEST_REPORT.md) (also at http://127.0.0.1:8080/report) ·
 > [Design](docs/DESIGN.md) · [Measured results and limits](docs/DESIGN.md#measured-results) ·
 > [Decisions](docs/DECISIONS.md)
 
