@@ -20,10 +20,13 @@ type api struct {
 	config  Config
 }
 
-// NewRouter returns the HTTP handler of ES.
+// NewRouter returns the HTTP handler of ES. It has Recovery, so a panic in one request
+// returns 500 instead of ending the process. It has no request Logger, because a line
+// per request is a cost on the ingestion path.
 func NewRouter(service *estimator.Service, config Config) *gin.Engine {
 	a := &api{service: service, config: config}
 	router := gin.New()
+	router.Use(gin.Recovery())
 	router.POST("/v1/events", ingestLimit(config.MaxInflightIngest), a.addEvents)
 	router.GET("/v1/segments/:segment/estimate", a.estimate)
 	router.GET("/healthz", healthz)

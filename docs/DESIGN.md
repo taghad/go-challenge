@@ -4,7 +4,7 @@ The Estimation Service (ES) receives `(user_id, segment)` pairs from the User
 Segmentation Service (USS) and answers one question: how many users are in a
 segment right now?
 
-**Status:** design approved, implementation not started. Every capacity and
+**Status:** design approved, implementation in progress. Every capacity and
 accuracy number below is an estimate until the [results](#measured-results)
 section is filled in.
 
@@ -246,18 +246,36 @@ test.
 | `REDIS_OP_TIMEOUT` | 500 ms | Context deadline per store operation |
 | Client retries | 0 | USS retries; client retries would amplify overload |
 
-### Other configuration
+### HTTP server
+
+The router is `gin.New` with `Recovery` and no request `Logger`, in release mode. A
+panic in one request returns `500` and the process keeps serving. These are all
+configurable.
 
 | Setting | Default `[E]` | Purpose |
 |---|---:|---|
-| `HTTP_ADDR` | `:8080` | Listen address |
-| `REDIS_ADDR` | `redis:6379` | Redis address |
+| `HTTP_READ_HEADER_TIMEOUT` | 5 s | Reading the request headers |
+| `HTTP_READ_TIMEOUT` | 10 s | Reading the whole request |
+| `HTTP_WRITE_TIMEOUT` | 10 s | Writing the response |
+| `HTTP_IDLE_TIMEOUT` | 60 s | A keep-alive connection between requests |
+| `SHUTDOWN_TIMEOUT` | 10 s | In-flight requests finishing after a signal |
+
+### Other configuration
+
+All configuration comes from the environment. An unset variable takes its default.
+Any other value that is invalid or not positive, including an empty one, stops ES at
+startup with exit code 1 and an error that names every invalid variable.
+
+| Setting | Default `[E]` | Purpose |
+|---|---:|---|
+| `HTTP_ADDR` | `:8080` | Listen address; host and port, port 1 to 65535 |
+| `REDIS_ADDR` | `redis:6379` | Redis address; host and port, port 1 to 65535 |
 | `REDIS_MAXMEMORY` | `3gb` | Redis memory limit, set in compose |
 | `BUCKET_SIZE` | `6h` | Bucket size; a whole number of seconds that divides 14 days |
 | `ESTIMATE_CACHE_TTL` | `30s` (`5s` in local compose) | Upper limit on cache age |
 | `MAX_INFLIGHT_INGEST` | `256` | Concurrent ingestion requests |
 | `MAX_INFLIGHT_ESTIMATE` | `32` | Concurrent estimate recomputations; `503` with `Retry-After` when full |
-| `MAX_BODY_BYTES` | `512KiB` | Ingestion body limit |
+| `MAX_BODY_BYTES` | `512KiB` | Ingestion body limit; bytes, with an optional `KiB` or `MiB` suffix |
 
 ### Tools
 
@@ -293,7 +311,8 @@ A number can be up to one cache TTL old, which is why local compose uses `5s`.
 | Duplicate events or retries | `PFADD` is idempotent, so users are not double counted. |
 | Clock skew between ES instances | Events can land in a neighboring bucket. The effect is limited to the skew. |
 | Too many segment names | Each segment can use up to 688 KB at 6h `[E]`. The regex limits format, not count, so this risk remains. An allowlist could be added later. |
-| Shutdown | On `SIGTERM`, in-flight requests finish and then the process exits. |
+| Shutdown | On `SIGTERM` or `SIGINT`, in-flight requests finish and then the process exits. Requests still running after `SHUTDOWN_TIMEOUT` are cut off and the exit code is 1. |
+| Invalid configuration | ES exits at startup with an error that names every invalid variable. |
 
 ### Traffic spikes
 
@@ -358,7 +377,9 @@ then uses a few rollups plus the recent buckets.
 ```text
 .
 ├── cmd/
-│   ├── server/main.go       # config, wiring, graceful shutdown
+│   ├── server/
+│   │   ├── config.go        # configuration from the environment
+│   │   └── main.go          # wiring, graceful shutdown
 │   └── uss/main.go          # USS traffic simulator
 ├── internal/
 │   ├── estimator/
