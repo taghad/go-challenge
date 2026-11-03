@@ -63,7 +63,7 @@ func newTestService(t *testing.T, store Store) (*Service, *fakeClock, Window) {
 	t.Helper()
 	window := mustWindow(t, 6*time.Hour)
 	clock := &fakeClock{next: justBeforeBoundary}
-	return NewService(store, window, clock.now), clock, window
+	return NewService(store, window, clock.now, testTTL, testMaxInflight), clock, window
 }
 
 type ctxKey struct{}
@@ -198,7 +198,7 @@ func TestEstimateWindowAndTimeAgree(t *testing.T) {
 func TestEstimateAsOfIsUTC(t *testing.T) {
 	zone := time.FixedZone("UTC+3:30", 3*3600+1800)
 	clock := &fakeClock{next: justBeforeBoundary.In(zone)}
-	service := NewService(&fakeStore{}, mustWindow(t, 6*time.Hour), clock.now)
+	service := NewService(&fakeStore{}, mustWindow(t, 6*time.Hour), clock.now, testTTL, testMaxInflight)
 
 	got, err := service.Estimate(context.Background(), "sports")
 	if err != nil {
