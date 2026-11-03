@@ -412,6 +412,7 @@ then uses a few rollups plus the recent buckets.
 │   ├── redisstore/          # Redis implementation of Store
 │   ├── httpapi/             # router, handlers, ingestion limiter
 │   └── web/                 # embedded index.html
+├── scripts/spike.sh         # collects docker stats during the spike test
 ├── docs/DESIGN.md
 ├── CLAUDE.md                # project rules for Claude Code
 ├── Dockerfile
@@ -520,22 +521,38 @@ test. Ingestion throughput comes from the spike test.
 `cmd/uss` simulates USS and is described [below](#uss-simulator).
 
 - **Ramp:** the offered rate starts at 1000 events per second and doubles at each step
-  until saturation, with batches of 500 and 30 s per step `[E]`. Each step is one
-  `steady` run of `cmd/uss`.
+  until saturation, with batches of 500 and 30 s per step `[E]`, at most 12 steps `[E]`.
+  `cmd/uss -ramp` runs it and applies the saturation rule. Each step is one `steady`
+  run, which draws new events into the same segments. If the p99 send lag of a step is
+  above 100 ms `[E]`, the simulator itself may be the limit, so the ramp stops and the
+  step is flagged.
 - **Saturation point:** the first step where the first-attempt acceptance falls below
   99% of offered events, or the p99 latency of first attempts exceeds 500 ms `[E]`.
   Retries do not count here, because enough retries could hide an overload. Final
   acceptance is reported separately.
 - **Reported:** highest sustained rate, `503` rate, Redis and ES resource use.
+  `scripts/spike.sh` only collects `docker stats`, for the same period.
+- **Burst run:** after the ramp, one `burst` run at half the highest sustained rate, 10x
+  for 5 s in a 30 s run `[E]`. It is reported, and it plays no part in saturation.
 - **Boundary burst:** segments are queried continuously across a bucket boundary,
   when all cache entries become invalid at once. This test runs in process with
-  real Redis and an injected clock, so it does not wait for a real boundary. The
-  estimate `503` rate and latency percentiles are reported.
+  real Redis and an injected clock, so it does not wait for a real boundary. It runs
+  with `docker compose run --rm bench go test -count=1 -v -run TestMeasureBoundaryBurst
+  ./internal/redisstore/`, at both bucket sizes, on 500 dense segments, with the default
+  cache TTL, estimate limit, and Redis timeouts.
+  - After a 20 s warm-up `[E]` that fills the cache, one querier per segment sends one
+    request per 100 ms `[E]` and waits for the 1 s `Retry-After` after a failure.
+  - A concurrent writer calls `Add` with 1000 events per second `[E]`, in batches of 500.
+  - Reported for the 15 s `[E]` after the boundary, and for the warm-up: the estimate
+    `503` rate and latency percentiles, and the `Add` p99 and `503` rate. Also reported:
+    how long until all segments have been served, with a limit of 60 s `[E]`.
 - **After the spike:** a timed-out event may have been written, so the true number of
   users of a segment lies between its distinct acknowledged users and its distinct
   attempted users. The estimate must lie in that range, widened by 3 standard errors,
   which is about 2.43% `[E]`:
   `acknowledged * (1 - 0.0243) <= estimate <= attempted * (1 + 0.0243)`.
+  `cmd/uss -check-estimates` checks all segments, after the last ramp step and after the
+  burst run only.
 
 Results describe the test machine only, and the simulator shares that machine
 with ES and Redis. They are not a production capacity prediction.
@@ -574,6 +591,10 @@ through the compose network:
 | `-timeout` | 2 s | Timeout of one attempt |
 | `-max-retries` | 3 | Retries per batch after the first attempt |
 | `-retry-jitter` | 1 s | Upper limit on the random time added to `Retry-After` |
+| `-ramp` | off | Double `-rate` at each step of `-duration` until saturation |
+| `-ramp-max-steps` | 12 | Stop the ramp after this many steps |
+| `-check-estimates` | off | At the end, compare each segment's estimate with its distinct users |
+| `-check-delay` | 6 s | Wait before the check, longer than the cache TTL of local compose |
 
 **Retries.** A `503`, a timeout, and a network error are each counted separately and
 retried, at most 3 times `[E]`, with the same body. A batch that uses them up is

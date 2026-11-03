@@ -51,14 +51,22 @@ type simulator struct {
 	endpoint string
 	client   *http.Client
 	recorder *recorder
+	// firstBatch is added to each batch index, so that the steps of a ramp draw new
+	// events instead of repeating the same ones.
+	firstBatch uint64
 }
 
 func newSimulator(o options, client *http.Client) *simulator {
+	return newStepSimulator(o, client, newUserTracker(o.users, o.segments), 0)
+}
+
+func newStepSimulator(o options, client *http.Client, users *userTracker, firstBatch uint64) *simulator {
 	return &simulator{
-		options:  o,
-		endpoint: strings.TrimSuffix(o.url, "/") + "/v1/events",
-		client:   client,
-		recorder: newRecorder(o.users, o.segments),
+		options:    o,
+		endpoint:   strings.TrimSuffix(o.url, "/") + "/v1/events",
+		client:     client,
+		recorder:   newRecorder(users),
+		firstBatch: firstBatch,
 	}
 }
 
@@ -95,7 +103,10 @@ schedule:
 		running.Go(func() { s.sendBatch(i, start, scheduled) })
 	}
 	running.Wait()
-	return s.recorder.report(s.options, len(offsets), interrupted)
+	result := s.recorder.report(s.options, len(offsets), interrupted)
+	result.StartedAt = start.UTC().Format(time.RFC3339Nano)
+	result.FinishedAt = time.Now().UTC().Format(time.RFC3339Nano)
+	return result
 }
 
 // sendBatch sends one batch with its retries. Each batch has its own generator, seeded
@@ -105,7 +116,7 @@ schedule:
 // latency and is not hidden. The scheduled time of a retry is when its wait ends. The
 // final latency runs from the scheduled time of the batch to its acknowledgement.
 func (s *simulator) sendBatch(index int, start, scheduled time.Time) {
-	generator := rand.New(rand.NewPCG(s.options.seed, uint64(index)))
+	generator := rand.New(rand.NewPCG(s.options.seed, s.firstBatch+uint64(index)))
 	b := s.newBatch(generator)
 	s.recorder.firstSend(b, start, scheduled)
 

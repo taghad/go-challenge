@@ -32,6 +32,10 @@ type options struct {
 	timeout         time.Duration // one attempt
 	maxRetries      int
 	retryJitter     time.Duration // upper limit on the time added to Retry-After
+	ramp            bool
+	rampMaxSteps    int
+	checkEstimates  bool
+	checkDelay      time.Duration
 	flags           map[string]string
 }
 
@@ -54,6 +58,10 @@ func parseOptions(args []string) (options, error) {
 	flags.DurationVar(&o.timeout, "timeout", 2*time.Second, "timeout of one attempt")
 	flags.IntVar(&o.maxRetries, "max-retries", 3, "retries per batch after the first attempt")
 	flags.DurationVar(&o.retryJitter, "retry-jitter", time.Second, "upper limit on the random time added to Retry-After")
+	flags.BoolVar(&o.ramp, "ramp", false, "double -rate at each step of -duration until saturation")
+	flags.IntVar(&o.rampMaxSteps, "ramp-max-steps", 12, "ramp: stop after this many steps")
+	flags.BoolVar(&o.checkEstimates, "check-estimates", false, "at the end, compare each segment's estimate with its distinct users")
+	flags.DurationVar(&o.checkDelay, "check-delay", 6*time.Second, "wait before the check, longer than the cache TTL of ES")
 	if err := flags.Parse(args); err != nil {
 		return options{}, err
 	}
@@ -84,6 +92,11 @@ func (o options) validate() error {
 	check(o.timeout > 0, "-timeout must be positive")
 	check(o.maxRetries >= 0, "-max-retries must not be negative")
 	check(o.retryJitter >= 0, "-retry-jitter must not be negative")
+	check(o.checkDelay >= 0, "-check-delay must not be negative")
+	if o.ramp {
+		check(o.profile == profileSteady, "-ramp uses steady steps, so it needs -profile steady")
+		check(o.rampMaxSteps > 0, "-ramp-max-steps must be positive")
+	}
 	if o.segments > 0 {
 		last := segmentName(o.segmentPrefix, o.segments-1)
 		check(estimator.ValidateSegment(last) == nil, "-segment-prefix makes the invalid segment name "+last)

@@ -9,9 +9,12 @@ import (
 // report is the output of one run. All of its numbers are measured on the machine that
 // ran it, which also runs ES and Redis if the run uses local compose.
 type report struct {
-	Config                  map[string]string `json:"config"`
+	Config                  map[string]string `json:"config,omitempty"`
+	StartedAt               string            `json:"started_at"`
+	FinishedAt              string            `json:"finished_at"`
 	Interrupted             bool              `json:"interrupted"`
 	ScheduledBatches        int               `json:"scheduled_batches"`
+	OfferedEvents           int64             `json:"offered_events"`
 	OfferedEventsPerSecond  float64           `json:"offered_events_per_second"`
 	AchievedEventsPerSecond float64           `json:"achieved_events_per_second"`
 	SendLagMs               latencySummary    `json:"send_lag_ms"`
@@ -19,7 +22,8 @@ type report struct {
 	Retries                 attemptReport     `json:"retries"`
 	Final                   finalReport       `json:"final"`
 	DistinctUsers           userCounts        `json:"distinct_users"`
-	Segments                []segmentCounts   `json:"segments"`
+	Segments                []segmentCounts   `json:"segments,omitempty"`
+	EstimateCheck           *estimateCheck    `json:"estimate_check,omitempty"`
 }
 
 // attemptReport covers one kind of attempt. Acceptance is the share of the events in
@@ -148,48 +152,97 @@ func (c *attemptCounters) finish() attemptReport {
 	return c.report
 }
 
-// recorder collects the results of all batches. One mutex is enough, because it is held
-// only after a response, and so it adds nothing to a measured latency.
-type recorder struct {
+// userTracker holds the distinct users of a run. It is separate from the recorder,
+// because the steps of a ramp each have a recorder but send to the same segments, so
+// the true number of users of a segment builds up across them.
+type userTracker struct {
 	mu               sync.Mutex
-	first            attemptCounters
-	retries          attemptCounters
-	final            finalReport
-	finalSamples     []time.Duration
-	sendLag          []time.Duration
-	lastSend         time.Duration
-	ackUsers         bitset
-	attemptedUsers   bitset
+	acked            bitset
+	attempted        bitset
 	segmentAcked     []bitset
 	segmentAttempted []bitset
 }
 
-func newRecorder(users, segments int) *recorder {
-	r := &recorder{
-		ackUsers:         newBitset(users),
-		attemptedUsers:   newBitset(users),
+func newUserTracker(users, segments int) *userTracker {
+	u := &userTracker{
+		acked:            newBitset(users),
+		attempted:        newBitset(users),
 		segmentAcked:     make([]bitset, segments),
 		segmentAttempted: make([]bitset, segments),
 	}
 	for i := range segments {
-		r.segmentAcked[i] = newBitset(users)
-		r.segmentAttempted[i] = newBitset(users)
+		u.segmentAcked[i] = newBitset(users)
+		u.segmentAttempted[i] = newBitset(users)
 	}
-	return r
+	return u
+}
+
+func (u *userTracker) markAttempted(b batch) {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	for i, user := range b.users {
+		u.attempted.set(user)
+		u.segmentAttempted[b.segments[i]].set(user)
+	}
+}
+
+func (u *userTracker) markAcknowledged(b batch) {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	for i, user := range b.users {
+		u.acked.set(user)
+		u.segmentAcked[b.segments[i]].set(user)
+	}
+}
+
+func (u *userTracker) total() userCounts {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	return userCounts{Acknowledged: u.acked.count(), Attempted: u.attempted.count()}
+}
+
+func (u *userTracker) perSegment(prefix string) []segmentCounts {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	segments := make([]segmentCounts, len(u.segmentAcked))
+	for i := range segments {
+		segments[i] = segmentCounts{
+			Segment: segmentName(prefix, i),
+			userCounts: userCounts{
+				Acknowledged: u.segmentAcked[i].count(),
+				Attempted:    u.segmentAttempted[i].count(),
+			},
+		}
+	}
+	return segments
+}
+
+// recorder collects the results of all batches of one run. One mutex is enough, because
+// it is held only after a response, and so it adds nothing to a measured latency.
+type recorder struct {
+	mu           sync.Mutex
+	users        *userTracker
+	first        attemptCounters
+	retries      attemptCounters
+	final        finalReport
+	finalSamples []time.Duration
+	sendLag      []time.Duration
+	lastSend     time.Duration
+}
+
+func newRecorder(users *userTracker) *recorder {
+	return &recorder{users: users}
 }
 
 // firstSend records a batch just before its first attempt.
 func (r *recorder) firstSend(b batch, start, scheduled time.Time) {
 	now := time.Now()
+	r.users.markAttempted(b)
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.sendLag = append(r.sendLag, now.Sub(scheduled))
 	r.lastSend = max(r.lastSend, now.Sub(start))
 	r.final.Events += int64(len(b.users))
-	for i, user := range b.users {
-		r.attemptedUsers.set(user)
-		r.segmentAttempted[b.segments[i]].set(user)
-	}
 }
 
 func (r *recorder) attempt(first bool, result outcome, events int, latency time.Duration) {
@@ -203,14 +256,11 @@ func (r *recorder) attempt(first bool, result outcome, events int, latency time.
 }
 
 func (r *recorder) acknowledge(b batch, latency time.Duration) {
+	r.users.markAcknowledged(b)
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.final.AcknowledgedEvents += int64(len(b.users))
 	r.finalSamples = append(r.finalSamples, latency)
-	for i, user := range b.users {
-		r.ackUsers.set(user)
-		r.segmentAcked[b.segments[i]].set(user)
-	}
 }
 
 func (r *recorder) abandon(events int) {
@@ -243,30 +293,18 @@ func (r *recorder) report(o options, scheduledBatches int, interrupted bool) rep
 	}
 	r.final.Acceptance = share(r.final.AcknowledgedEvents, r.final.Events)
 	r.final.LatencyMs = summarize(r.finalSamples)
-	segments := make([]segmentCounts, len(r.segmentAcked))
-	for i := range segments {
-		segments[i] = segmentCounts{
-			Segment: segmentName(o.segmentPrefix, i),
-			userCounts: userCounts{
-				Acknowledged: r.segmentAcked[i].count(),
-				Attempted:    r.segmentAttempted[i].count(),
-			},
-		}
-	}
 	return report{
 		Config:                  o.flags,
 		Interrupted:             interrupted,
 		ScheduledBatches:        scheduledBatches,
+		OfferedEvents:           int64(scheduledBatches * o.batch),
 		OfferedEventsPerSecond:  float64(scheduledBatches*o.batch) / o.duration.Seconds(),
 		AchievedEventsPerSecond: achieved,
 		SendLagMs:               summarize(r.sendLag),
 		FirstAttempts:           r.first.finish(),
 		Retries:                 r.retries.finish(),
 		Final:                   r.final,
-		DistinctUsers: userCounts{
-			Acknowledged: r.ackUsers.count(),
-			Attempted:    r.attemptedUsers.count(),
-		},
-		Segments: segments,
+		DistinctUsers:           r.users.total(),
+		Segments:                r.users.perSegment(o.segmentPrefix),
 	}
 }
