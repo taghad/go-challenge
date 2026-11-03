@@ -293,6 +293,19 @@ startup with exit code 1 and an error that names every invalid variable.
 Left out because no requirement needs them: Kafka, Prometheus, Nginx, and
 repository or DTO layers.
 
+### Running with Compose
+
+`docker compose up --build` starts ES and Redis. The ES image is a static binary
+(`CGO_ENABLED=0`) on distroless, running as a non-root user.
+
+- ES starts only after Redis is healthy, and restarts on failure. An invalid
+  configuration therefore restarts in a loop, with the error in `docker compose logs es`.
+- ES has no compose healthcheck, because the image has no shell or client to run one
+  with. `/healthz` and `/readyz` are for whatever runs ES.
+- ES has no authentication, so it is published on `127.0.0.1:8080` only.
+- The stop grace period is 15 s `[E]`, longer than `SHUTDOWN_TIMEOUT`, so that docker
+  does not kill ES during a graceful shutdown.
+
 ### Frontend
 
 One `index.html` with plain JavaScript, embedded in the binary and served from

@@ -1,4 +1,22 @@
 services:
+  # It has no healthcheck, because the image has no shell or client to run one with.
+  es:
+    build:
+      context: .
+      target: server
+    restart: on-failure
+    # ES has no authentication, so it is published on this machine only.
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      ESTIMATE_CACHE_TTL: 5s
+    # Longer than the default SHUTDOWN_TIMEOUT of 10s, so that docker does not kill ES
+    # while in-flight requests are still finishing.
+    stop_grace_period: 15s
+    depends_on:
+      redis:
+        condition: service_healthy
+
   redis:
     image: redis:8.2.3
     command:
