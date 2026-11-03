@@ -1,0 +1,11 @@
+# Only Go sources and module files belong in the build context.
+.git
+.gitignore
+.dockerignore
+.env
+bin
+docs
+Dockerfile
+docker-compose.yml
+*.md
+*.png

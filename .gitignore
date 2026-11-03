@@ -1,0 +1,10 @@
+# Build and test output
+/bin/
+*.test
+*.out
+
+# Local configuration
+.env
+
+# macOS
+.DS_Store
