@@ -164,6 +164,8 @@ Validation:
 `204` is returned only after Redis accepts the write. ES keeps no in-memory write
 buffer, so an acknowledged event is not lost when ES crashes.
 
+`Retry-After` is a fixed 1 second `[E]`.
+
 ### Why REST
 
 Gin and the frontend are both HTTP, so one API serves both. gRPC would reduce
@@ -250,6 +252,7 @@ test.
 |---|---:|---|
 | `HTTP_ADDR` | `:8080` | Listen address |
 | `REDIS_ADDR` | `redis:6379` | Redis address |
+| `REDIS_MAXMEMORY` | `3gb` | Redis memory limit, set in compose |
 | `BUCKET_SIZE` | `6h` | Bucket size; a whole number of seconds that divides 14 days |
 | `ESTIMATE_CACHE_TTL` | `30s` (`5s` in local compose) | Upper limit on cache age |
 | `MAX_INFLIGHT_INGEST` | `256` | Concurrent ingestion requests |
@@ -463,8 +466,9 @@ events and latency percentiles.
   offered events, or ingestion p99 exceeds 500 ms `[E]`.
 - **Reported:** highest sustained rate, `503` rate, Redis and ES resource use.
 - **Boundary burst:** segments are queried continuously across a bucket boundary,
-  when all cache entries become invalid at once. The estimate `503` rate and
-  latency percentiles are reported.
+  when all cache entries become invalid at once. This test runs in process with
+  real Redis and an injected clock, so it does not wait for a real boundary. The
+  estimate `503` rate and latency percentiles are reported.
 - **After the spike:** a segment's estimate is compared with the distinct users
   whose events were acknowledged. It should be within 3 standard errors, which
   is about 2.43% `[E]`.
