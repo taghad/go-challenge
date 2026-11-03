@@ -4,7 +4,7 @@ services:
     build:
       context: .
       target: server
-    restart: on-failure
+    restart: on-failure:5
     # ES has no authentication, so it is published on this machine only.
     ports:
       - "127.0.0.1:8080:8080"

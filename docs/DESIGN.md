@@ -298,8 +298,9 @@ repository or DTO layers.
 `docker compose up --build` starts ES and Redis. The ES image is a static binary
 (`CGO_ENABLED=0`) on distroless, running as a non-root user.
 
-- ES starts only after Redis is healthy, and restarts on failure. An invalid
-  configuration therefore restarts in a loop, with the error in `docker compose logs es`.
+- ES starts only after Redis is healthy, and restarts on failure at most 5 times `[E]`.
+  An invalid configuration therefore stops after those restarts, with the error in
+  `docker compose logs es`.
 - ES has no compose healthcheck, because the image has no shell or client to run one
   with. `/healthz` and `/readyz` are for whatever runs ES.
 - ES has no authentication, so it is published on `127.0.0.1:8080` only.
