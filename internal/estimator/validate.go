@@ -32,8 +32,8 @@ var ErrInvalidSegment = fmt.Errorf("segment must match %s", segmentPattern)
 
 // Event records that a user is in a segment.
 type Event struct {
-	UserID  string
-	Segment string
+	UserID  string `json:"user_id"`
+	Segment string `json:"segment"`
 }
 
 // ValidationError describes the first invalid event of a batch. Reason never
