@@ -58,7 +58,7 @@ expiry, so ES does not implement either one.
 Time is divided into fixed buckets aligned to the Unix epoch in UTC. Each
 segment has one HLL per bucket.
 
-- **Key:** `es:{sports}:21600:1794096000`, which holds the segment, the bucket
+- **Key:** `es:{sports}:3600:1794096000`, which holds the segment, the bucket
   size in seconds, and the bucket start in Unix seconds. The `{sports}` hash tag
   keeps all of a segment's keys in one Redis Cluster slot, so a multi-key
   `PFCOUNT` keeps working if Redis is later clustered.
@@ -110,9 +110,10 @@ The real undercount is therefore measured, not derived from time. See the
 
 ### Bucket size
 
-`BUCKET_SIZE` is configurable and defaults to `6h`. It must be a whole number of
-seconds and divide 14 days exactly, or ES refuses to start. The final default is
-chosen from measurements, using the rule below.
+`BUCKET_SIZE` is configurable and defaults to `1h`. It must be a whole number of
+seconds and divide 14 days exactly, or ES refuses to start. The default was chosen
+from measurements, using the rule below. All four rules held, with 1.27%, 6.8 ms,
+2.43 GB, and 6.3% `[M]`, so the default is 1h.
 
 | Bucket size | Buckets | Max memory, 500 segments `[E]` | Uncached estimate `[E]` | Time not covered, worst case |
 |---|---:|---:|---:|---:|
@@ -271,7 +272,7 @@ startup with exit code 1 and an error that names every invalid variable.
 | `HTTP_ADDR` | `:8080` | Listen address; host and port, port 1 to 65535 |
 | `REDIS_ADDR` | `redis:6379` | Redis address; host and port, port 1 to 65535 |
 | `REDIS_MAXMEMORY` | `3gb` | Redis memory limit, set in compose |
-| `BUCKET_SIZE` | `6h` | Bucket size; a whole number of seconds that divides 14 days |
+| `BUCKET_SIZE` | `1h` `[M]` | Bucket size; a whole number of seconds that divides 14 days |
 | `ESTIMATE_CACHE_TTL` | `30s` (`5s` in local compose) | Upper limit on cache age |
 | `MAX_INFLIGHT_INGEST` | `256` | Concurrent ingestion requests |
 | `MAX_INFLIGHT_ESTIMATE` | `32` | Concurrent estimate recomputations; `503` with `Retry-After` when full |
@@ -331,7 +332,7 @@ URL path. Serving the page does not touch Redis, so it loads during a Redis outa
 | ES crash | No state is lost. USS retries unacknowledged requests and compose restarts ES. |
 | Duplicate events or retries | `PFADD` is idempotent, so users are not double counted. |
 | Clock skew between ES instances | Events can land in a neighboring bucket. The effect is limited to the skew. |
-| Too many segment names | Each segment can use up to 688 KB at 6h `[E]`. The regex limits format, not count, so this risk remains. An allowlist could be added later. |
+| Too many segment names | Each segment can use up to 4.84 MB at 1h: 336 keys of 14,392 bytes `[M]`. The regex limits format, not count, so this risk remains. An allowlist could be added later. |
 | Shutdown | On `SIGTERM` or `SIGINT`, in-flight requests finish and then the process exits. Requests still running after `SHUTDOWN_TIMEOUT` are cut off and the exit code is 1. |
 | Invalid configuration | ES exits at startup with an error that names every invalid variable. |
 
@@ -365,7 +366,7 @@ a segment's keys in one slot. Clustering spreads different segments across shard
 but it cannot spread the load of one hot segment.
 
 **Next step, not implemented: a fixed split by user.** Each user goes to one of
-`K` sub-keys by `hash(user_id) mod K`, for example `es:{sports:3}:21600:1794096000`.
+`K` sub-keys by `hash(user_id) mod K`, for example `es:{sports:3}:3600:1794096000`.
 The estimate is the sum of the `K` counts.
 
 - The sum is valid only because the sub-keys are disjoint, so no user is counted

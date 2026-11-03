@@ -57,7 +57,7 @@ func TestLoadConfigDefaults(t *testing.T) {
 	if cfg.maxBodyBytes != 512*1024 {
 		t.Errorf("maxBodyBytes = %d", cfg.maxBodyBytes)
 	}
-	want, err := estimator.NewWindow(6 * time.Hour)
+	want, err := estimator.NewWindow(time.Hour)
 	if err != nil {
 		t.Fatalf("NewWindow: %v", err)
 	}
@@ -84,7 +84,7 @@ func TestLoadConfigReadsEveryVariable(t *testing.T) {
 		"MAX_INFLIGHT_INGEST":      "13",
 		"MAX_INFLIGHT_ESTIMATE":    "14",
 		"MAX_BODY_BYTES":           "15",
-		"BUCKET_SIZE":              "1h",
+		"BUCKET_SIZE":              "6h",
 	}))
 	if err != nil {
 		t.Fatalf("loadConfig: %v", err)
@@ -126,7 +126,7 @@ func TestLoadConfigReadsEveryVariable(t *testing.T) {
 	if cfg.maxBodyBytes != 15 {
 		t.Errorf("maxBodyBytes = %d", cfg.maxBodyBytes)
 	}
-	want, err := estimator.NewWindow(time.Hour)
+	want, err := estimator.NewWindow(6 * time.Hour)
 	if err != nil {
 		t.Fatalf("NewWindow: %v", err)
 	}

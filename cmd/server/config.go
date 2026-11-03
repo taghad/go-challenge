@@ -58,7 +58,8 @@ func loadConfig(lookup func(string) (string, bool)) (config, error) {
 		maxInflightEstimate: r.positiveInt("MAX_INFLIGHT_ESTIMATE", "32"),
 		maxBodyBytes:        r.byteSize("MAX_BODY_BYTES", "512KiB"),
 	}
-	if size := r.duration("BUCKET_SIZE", "6h"); size > 0 {
+	// The default of 1h comes from the decision rule and measurements in docs/DESIGN.md.
+	if size := r.duration("BUCKET_SIZE", "1h"); size > 0 {
 		window, err := estimator.NewWindow(size)
 		if err != nil {
 			r.fail("BUCKET_SIZE", size.String(), err)

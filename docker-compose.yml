@@ -10,6 +10,8 @@ services:
       - "127.0.0.1:8080:8080"
     environment:
       ESTIMATE_CACHE_TTL: 5s
+      # The same as the default of ES, chosen by the decision rule in docs/DESIGN.md.
+      BUCKET_SIZE: 1h
     # Longer than the default SHUTDOWN_TIMEOUT of 10s, so that docker does not kill ES
     # while in-flight requests are still finishing.
     stop_grace_period: 15s
@@ -35,7 +37,8 @@ services:
       - "yes"
       - --appendfsync
       - everysec
-      # The default of 3gb is an estimate [E].
+      # 500 fully dense segments at 1h buckets measured 2.43 GB [M], which leaves room in
+      # the default of 3gb. See the limits in docs/DESIGN.md.
       - --maxmemory
       - ${REDIS_MAXMEMORY:-3gb}
       - --maxmemory-policy
