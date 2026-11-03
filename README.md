@@ -1,3 +1,15 @@
+> **Estimation Service.** A Go and Gin service that estimates the users in a segment over the
+> last 14 days, with Redis HyperLogLog. Only Docker is needed.
+>
+> ```sh
+> docker compose up --build                             # then open http://127.0.0.1:8080
+> docker compose run --rm test                          # run the tests
+> docker compose run --rm uss -rate 1000 -duration 30s  # send simulated USS traffic
+> ```
+>
+> [Design](docs/DESIGN.md) · [Measured results and limits](docs/DESIGN.md#measured-results) ·
+> [Decisions](docs/DECISIONS.md)
+
 # How many users? (Go Challenge)
 
 Suppose there is a "User Segmentation Service" (USS) that segments users based on their activities.
