@@ -316,6 +316,7 @@ without changing the key format. Clustering is not implemented here.
 │   ├── httpapi/             # router, handlers, ingestion limiter
 │   └── web/                 # embedded index.html
 ├── docs/DESIGN.md
+├── CLAUDE.md                # project rules for Claude Code
 ├── Dockerfile
 ├── docker-compose.yml
 ├── .dockerignore
@@ -433,7 +434,10 @@ it. Steps 19 to 21 do not start until all of them are confirmed.
 Each step is one small commit, with its tests.
 
 1. `docs: add design and implementation plan`
-2. `chore: initialize Go module and ignore files`
+2. Project setup, in three commits:
+   - `docs: define traffic model and threshold status`
+   - `docs: add project rules for Claude Code`
+   - `chore: initialize Go module and ignore files`
 3. `build: add compose services for Redis and Go tests`
 4. `feat(estimator): add configurable time bucket window`
 5. `feat(estimator): add event validation`
