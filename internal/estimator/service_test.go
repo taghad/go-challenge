@@ -256,6 +256,27 @@ func TestEstimateWrapsStoreError(t *testing.T) {
 	}
 }
 
+func TestPing(t *testing.T) {
+	service, _, _ := newTestService(t, &fakeStore{})
+
+	if err := service.Ping(context.Background()); err != nil {
+		t.Errorf("Ping = %v, want nil", err)
+	}
+}
+
+func TestPingWrapsStoreError(t *testing.T) {
+	storeErr := errors.New("store down")
+	service, _, _ := newTestService(t, &fakeStore{err: storeErr})
+
+	err := service.Ping(context.Background())
+	if !errors.Is(err, storeErr) {
+		t.Errorf("Ping = %v, want it to wrap %v", err, storeErr)
+	}
+	if err == storeErr {
+		t.Error("store error is returned without context")
+	}
+}
+
 func TestEstimatePassesContextToStore(t *testing.T) {
 	store := &fakeStore{}
 	service, _, _ := newTestService(t, store)

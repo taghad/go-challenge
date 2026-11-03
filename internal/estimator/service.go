@@ -108,6 +108,15 @@ func (s *Service) Estimate(ctx context.Context, segment string) (Estimate, error
 	}
 }
 
+// Ping reports whether the store is reachable. It never uses the cache, because the
+// answer is about the store now.
+func (s *Service) Ping(ctx context.Context) error {
+	if err := s.store.Ping(ctx); err != nil {
+		return fmt.Errorf("ping store: %w", err)
+	}
+	return nil
+}
+
 // recompute reads the store and caches the result.
 //
 // The semaphore is non-blocking, because ES builds no internal queue: when it is full

@@ -26,5 +26,7 @@ func NewRouter(service *estimator.Service, config Config) *gin.Engine {
 	router := gin.New()
 	router.POST("/v1/events", ingestLimit(config.MaxInflightIngest), a.addEvents)
 	router.GET("/v1/segments/:segment/estimate", a.estimate)
+	router.GET("/healthz", healthz)
+	router.GET("/readyz", a.readyz)
 	return router
 }
