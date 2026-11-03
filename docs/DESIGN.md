@@ -110,9 +110,9 @@ The real undercount is therefore measured, not derived from time. See the
 
 ### Bucket size
 
-`BUCKET_SIZE` is configurable and defaults to `6h`. It must divide 14 days
-exactly, or ES refuses to start. The final default is chosen from measurements,
-using the rule below.
+`BUCKET_SIZE` is configurable and defaults to `6h`. It must be a whole number of
+seconds and divide 14 days exactly, or ES refuses to start. The final default is
+chosen from measurements, using the rule below.
 
 | Bucket size | Buckets | Max memory, 500 segments `[E]` | Uncached estimate `[E]` | Time not covered, worst case |
 |---|---:|---:|---:|---:|
@@ -159,6 +159,7 @@ Validation:
 
 - `segment` must match `^[a-zA-Z0-9_-]{1,64}$`. It is case-sensitive.
 - `user_id` must be 1 to 128 bytes.
+- A batch of more than 1000 events returns `413`.
 
 `204` is returned only after Redis accepts the write. ES keeps no in-memory write
 buffer, so an acknowledged event is not lost when ES crashes.
@@ -220,7 +221,9 @@ delay writes. Each ES instance caches estimates in memory.
 - The cache holds at most 10,000 entries `[E]` and is cleared when full, so
   queries for arbitrary segment names cannot grow it without bound.
 - All entries become invalid at a boundary. Recomputation is limited to one
-  flight per queried segment, per instance.
+  flight per queried segment, per instance, and to `MAX_INFLIGHT_ESTIMATE` flights
+  per instance. When that limit is full, the estimate returns `503` with
+  `Retry-After`. Cached responses never touch the limit.
 
 Estimated Redis load `[E]`: 500 segments with a 30s TTL is about 17 recomputes
 per second per instance. At about 2 ms each, that is about 3% of Redis time for
@@ -247,9 +250,10 @@ test.
 |---|---:|---|
 | `HTTP_ADDR` | `:8080` | Listen address |
 | `REDIS_ADDR` | `redis:6379` | Redis address |
-| `BUCKET_SIZE` | `6h` | Bucket size; must divide 14 days |
+| `BUCKET_SIZE` | `6h` | Bucket size; a whole number of seconds that divides 14 days |
 | `ESTIMATE_CACHE_TTL` | `30s` (`5s` in local compose) | Upper limit on cache age |
 | `MAX_INFLIGHT_INGEST` | `256` | Concurrent ingestion requests |
+| `MAX_INFLIGHT_ESTIMATE` | `32` | Concurrent estimate recomputations; `503` with `Retry-After` when full |
 | `MAX_BODY_BYTES` | `512KiB` | Ingestion body limit |
 
 ### Tools
@@ -301,6 +305,10 @@ Redis is estimated to handle about 100k operations per second `[E]`. The actual
 limit is found by the spike test.
 
 **Reads.** The cache and `singleflight` limit how much read traffic reaches Redis.
+`MAX_INFLIGHT_ESTIMATE` limits concurrent recomputations, and when it is full ES
+immediately returns `503` with `Retry-After`. This also covers the boundary burst:
+all cache entries become invalid at a boundary, so every queried segment recomputes
+at once.
 
 **Limit of this design.** If USS cannot retry, rejected events are lost.
 
@@ -454,6 +462,9 @@ events and latency percentiles.
 - **Saturation point:** the first step where accepted events fall below 99% of
   offered events, or ingestion p99 exceeds 500 ms `[E]`.
 - **Reported:** highest sustained rate, `503` rate, Redis and ES resource use.
+- **Boundary burst:** segments are queried continuously across a bucket boundary,
+  when all cache entries become invalid at once. The estimate `503` rate and
+  latency percentiles are reported.
 - **After the spike:** a segment's estimate is compared with the distinct users
   whose events were acknowledged. It should be within 3 standard errors, which
   is about 2.43% `[E]`.
