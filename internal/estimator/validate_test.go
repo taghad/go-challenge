@@ -72,32 +72,48 @@ func TestValidateBatchUserID(t *testing.T) {
 	}
 }
 
+// segmentCases is shared so that reads and writes are held to the same rule.
+var segmentCases = []struct {
+	name    string
+	segment string
+	valid   bool
+}{
+	{"empty", "", false},
+	{"one character", "s", true},
+	{"at the limit", strings.Repeat("s", 64), true},
+	{"over the limit", strings.Repeat("s", 65), false},
+	{"lower case", "sports", true},
+	{"upper case", "SPORTS", true},
+	{"digits, underscore, hyphen", "a0_b-1", true},
+	{"leading space", " sports", false},
+	{"trailing space", "sports ", false},
+	{"trailing newline", "sports\n", false},
+	{"leading newline", "\nsports", false},
+	{"inner space", "spo rts", false},
+	{"hash tag braces", "{sports}", false},
+	{"key separator", "sports:1", false},
+	{"non-ASCII letter", "spörts", false},
+}
+
 func TestValidateBatchSegment(t *testing.T) {
-	tests := []struct {
-		name    string
-		segment string
-		valid   bool
-	}{
-		{"empty", "", false},
-		{"one character", "s", true},
-		{"at the limit", strings.Repeat("s", 64), true},
-		{"over the limit", strings.Repeat("s", 65), false},
-		{"lower case", "sports", true},
-		{"upper case", "SPORTS", true},
-		{"digits, underscore, hyphen", "a0_b-1", true},
-		{"leading space", " sports", false},
-		{"trailing space", "sports ", false},
-		{"trailing newline", "sports\n", false},
-		{"leading newline", "\nsports", false},
-		{"inner space", "spo rts", false},
-		{"hash tag braces", "{sports}", false},
-		{"key separator", "sports:1", false},
-		{"non-ASCII letter", "spörts", false},
-	}
-	for _, tt := range tests {
+	for _, tt := range segmentCases {
 		t.Run(tt.name, func(t *testing.T) {
 			err := ValidateBatch([]Event{{UserID: "u1", Segment: tt.segment}})
 			checkEvent(t, err, tt.valid, "segment")
+		})
+	}
+}
+
+func TestValidateSegment(t *testing.T) {
+	for _, tt := range segmentCases {
+		t.Run(tt.name, func(t *testing.T) {
+			var want error
+			if !tt.valid {
+				want = ErrInvalidSegment
+			}
+			if got := ValidateSegment(tt.segment); got != want {
+				t.Errorf("ValidateSegment = %v, want %v", got, want)
+			}
 		})
 	}
 }

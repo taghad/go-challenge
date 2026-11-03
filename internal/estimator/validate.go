@@ -26,6 +26,10 @@ var (
 	ErrBatchTooLarge = fmt.Errorf("batch has more than %d events", MaxBatchSize)
 )
 
+// ErrInvalidSegment is returned for a segment name on a read. It is not a
+// ValidationError, because an event index has no meaning for a read.
+var ErrInvalidSegment = fmt.Errorf("segment must match %s", segmentPattern)
+
 // Event records that a user is in a segment.
 type Event struct {
 	UserID  string
@@ -42,6 +46,15 @@ type ValidationError struct {
 
 func (e *ValidationError) Error() string {
 	return fmt.Sprintf("event %d: %s %s", e.Index, e.Field, e.Reason)
+}
+
+// ValidateSegment returns ErrInvalidSegment unless the name matches the same
+// pattern ValidateBatch applies to events.
+func ValidateSegment(segment string) error {
+	if !segmentPattern.MatchString(segment) {
+		return ErrInvalidSegment
+	}
+	return nil
 }
 
 // ValidateBatch returns nil if the whole batch is valid. Otherwise the whole batch
