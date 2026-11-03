@@ -7,10 +7,28 @@ services:
       - "yes"
       - --appendfsync
       - everysec
+      # The default of 3gb is an estimate [E].
+      - --maxmemory
+      - ${REDIS_MAXMEMORY:-3gb}
       - --maxmemory-policy
       - noeviction
     volumes:
       - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 2s
+      retries: 15
+
+  # Used only by the test service. It has no volume or AOF, so test data never
+  # mixes with the data of the redis service.
+  redis-test:
+    image: redis:8.2.3
+    profiles: ["test"]
+    command:
+      - redis-server
+      - --appendonly
+      - "no"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 2s
@@ -22,15 +40,15 @@ services:
     image: golang:1.27.3
     profiles: ["test"]
     working_dir: /src
-    command: ["go", "test", "./..."]
+    command: ["go", "test", "-race", "./..."]
     environment:
-      REDIS_ADDR: redis:6379
+      REDIS_ADDR: redis-test:6379
     volumes:
       - .:/src
       - go-mod-cache:/go/pkg/mod
       - go-build-cache:/root/.cache/go-build
     depends_on:
-      redis:
+      redis-test:
         condition: service_healthy
 
 volumes:
