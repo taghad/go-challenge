@@ -83,6 +83,24 @@ services:
       redis-test:
         condition: service_healthy
 
+  # Runs the measurements at full size, without -race, whose overhead would distort
+  # them: docker compose run --rm measure
+  measure:
+    image: golang:1.27.3
+    profiles: ["test"]
+    working_dir: /src
+    command: ["go", "test", "-p", "1", "-count=1", "-v", "-timeout", "60m", "-run", "Measure", "./..."]
+    environment:
+      REDIS_ADDR: redis-test:6379
+      ES_MEASURE: "1"
+    volumes:
+      - .:/src
+      - go-mod-cache:/go/pkg/mod
+      - go-build-cache:/root/.cache/go-build
+    depends_on:
+      redis-test:
+        condition: service_healthy
+
 volumes:
   redis-data:
   go-mod-cache:

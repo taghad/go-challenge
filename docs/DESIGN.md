@@ -424,7 +424,9 @@ then uses a few rollups plus the recent buckets.
 
 ## Test plan
 
-All tests run in Docker.
+All tests run in Docker. Measurements run at full size with
+`docker compose run --rm measure`, without `-race`. The default test run uses the
+same code at a small size.
 
 | Type | Coverage |
 |---|---|
@@ -432,7 +434,7 @@ All tests run in Docker.
 | Cache unit | Entry expires at TTL; **entry is not served after a boundary, even within TTL**; a request after a boundary does not join an earlier flight; size limit |
 | HTTP (`httptest`) | Status codes, batch and body limits, limiter rejection, store errors |
 | Integration, real Redis | Idempotency; union across buckets; every key has an expiry; reading a window that excludes an old bucket |
-| HLL accuracy | Error at 1k, 100k, and 1M distinct users |
+| HLL accuracy | Error at 1k, 100k, and 1M distinct users, in 5 independent sets of users at each size `[E]`, on real Redis through the Store. The test fails above 2.43%. |
 | Boundary error | See below |
 | 1h and 6h benchmark | See below |
 | Spike | See below |
