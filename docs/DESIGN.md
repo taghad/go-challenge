@@ -694,8 +694,9 @@ Every value in this section is `[M]` unless it is marked otherwise.
 with 6 CPUs and 3.825 GiB, kernel 7.0.12-linuxkit. Redis 8.2.11 with jemalloc-5.3.0, and
 Go 1.27.3. The simulator, ES, and Redis all ran in that one VM.
 
-**Code:** the burst ran after the dependency update. Everything else ran before it and was
-not repeated. The ramp and the burst ran with 6h buckets, the default at that time.
+**Code:** the ramp and the burst ran at 1h with the current dependencies, at commit
+`cfabc4f`. A separate, idle ES and Redis also ran in the VM during them. Everything else ran
+before the dependency update and was not repeated.
 
 ### Bucket size decision
 
@@ -750,44 +751,43 @@ Ramp with batches of 500, 30 s per step, 1,000,000 users, and 500 segments.
 
 | Offered events/s | First-attempt acceptance | First-attempt p99 | Mean CPU, ES / Redis / simulator |
 |---:|---:|---:|---:|
-| 1,000 to 256,000, 9 steps | 100% | at most 11.3 ms | at most 39% / 19% / 11% |
-| 512,000 | 100% | 6.5 ms | 59% / 38% / 19% |
-| 1,024,000 | 100% | 11.8 ms | 116% / 72% / 37% |
-| 2,048,000 | 27.60% | 128.6 ms | 188% / 93% / 87% |
+| 1,000 to 256,000, 9 steps | 100% | at most 31.7 ms | at most 36% / 21% / 11% |
+| 512,000 | 100% | 29.4 ms | 58% / 37% / 20% |
+| 1,024,000 | 100% | 11.4 ms | 107% / 69% / 35% |
+| 2,048,000 | 31.35% | 120.8 ms | 188% / 94% / 83% |
 
 - **Saturation point:** 2,048,000 events per second, by first-attempt acceptance. The
   highest sustained rate is 1,024,000.
-- **In the saturated step:** `503` on 88,965 of 122,880 first attempts (72.40%), with no
-  timeouts at the simulator. Final acceptance was 69.81%, with 18,548,500 events abandoned.
-  The send lag p99 was 5.6 ms, so the simulator was not the limit.
-- **Peak memory in that step:** ES 316 MiB, Redis 64 MiB, simulator 1209 MiB. ES logged 5279
-  store failures, 4992 of them Redis pool timeouts, and it did not restart.
-- **After the ramp:** all 500 segments were in range, with the estimate from -2.29% to
-  +2.39% of acknowledged users.
+- **In the saturated step:** `503` on 84,352 of 122,880 first attempts (68.65%), with no
+  timeouts at the simulator. Final acceptance was 74.76%, with 15,509,500 events abandoned.
+  The send lag p99 was 3.95 ms, so the simulator was not the limit.
+- **Peak memory in that step:** ES 287 MiB, Redis 37 MiB, simulator 1150 MiB. ES did not
+  restart.
+- **After the ramp:** all 500 segments were in range, with the estimate from -2.04% to
+  +2.40% of acknowledged users.
 
 ### Burst
 
-A base of 204,800 events per second, 10x from 10 s to 15 s, in a 30 s run, on a new Redis. The
-peak is 2,048,000. There were 15,360,000 offered events.
+A base of 204,800 events per second, 10x from 10 s to 15 s, in a 30 s run, right after the ramp
+on the same Redis. The peak is 2,048,000. There were 15,360,000 offered events.
 
 | Result | Value |
 |---|---:|
-| First-attempt acceptance, whole run | 64.41% |
-| First-attempt acceptance, in the five seconds from 10 s | 48.10% `[calculated]` |
-| Final acceptance | 97.69% |
-| Abandoned events | 354,500 (2.31%) |
-| `503` rate, first attempts | 35.59% |
-| `503` rate, retries | 47.50% |
+| First-attempt acceptance, whole run | 65.86% |
+| First-attempt acceptance, in the five seconds from 10 s | 49.83% `[calculated]` |
+| Final acceptance | 98.47% |
+| Abandoned events | 235,000 (1.53%) |
+| `503` rate, first attempts | 34.14% |
+| `503` rate, retries | 42.79% |
 | Timeouts and network errors at the simulator | 0 |
-| Final latency p99, including retry waits | 5060 ms |
-| **Time to recover after the peak** | **3 s**, at a resolution of 1 s |
-| Last retry finished | in the second from 19 s, which is 4 to 5 s after the peak |
-| Estimate check after the burst | 500 of 500 segments in range, -1.91% to +1.58% of acknowledged users |
-| Peak memory: ES / Redis / simulator | 186 / 88 / 838 MiB |
-| Peak CPU: ES / Redis / simulator | 193% / 107% / 82% |
+| Final latency p99, including retry waits | 4949 ms |
+| **Time to recover after the peak** | **2 s**, at a resolution of 1 s |
+| Last retry finished | in the second from 18 s, which is 3 to 4 s after the peak |
+| Estimate check after the burst | 500 of 500 segments in range, -1.69% to +1.85% of acknowledged users |
+| Peak memory: ES / Redis / simulator | 239 / 44 / 772 MiB |
+| Peak CPU: ES / Redis / simulator | 191% / 110% / 80% |
 
-ES logged 150 store failures, all Redis pool timeouts. No container restarted. The run's send
-lag p99 was 2.6 ms.
+No container restarted. The run's send lag p99 was 2.3 ms.
 
 ### Boundary burst
 
@@ -819,8 +819,6 @@ imported packages. One remains at module level: GO-2026-5932, for the unmaintain
   the same VM as ES and Redis. It also uses repeated users: distinct users reached the
   1,000,000 limit by the 256,000 step, so later steps mostly repeated users, and `PFADD` on
   new users could be slower `[E]`.
-- **Throughput was not run at 1h.** A write touches only the current bucket, so the bucket
-  size should not change it `[E]`, but this was not measured.
 - **The 15 s boundary result is likely shaped by the test.** The queriers wait a fixed 1 s
   after a `503`, and 32 flights fit each wave, so 500 segments need about 15.6 s
   `[calculated]`. The 6h and 1h results are nearly equal although `PFCOUNT` differs by about

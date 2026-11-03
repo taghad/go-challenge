@@ -57,11 +57,11 @@ one laptop, `[calculated]` is computed from measured values, and `[E]` is an est
 - **Decision:** ES acknowledges only after Redis accepts a write. When the limiter is full it
   returns `503` with `Retry-After` at once, and USS retries.
 - **Why:** an acknowledged event is not lost when ES crashes, and ES memory stays bounded. In the
-  10x burst, ES recovered 3 s after the peak, with 97.69% final acceptance and no restart `[M]`.
+  10x burst, ES recovered 2 s after the peak, with 98.47% final acceptance and no restart `[M]`.
   `PFADD` is idempotent, so retries do not double count.
 - **Rejected:** Kafka or another durable queue, which is more to run than any measured load
   needs. An in-memory buffer in ES, which would lose acknowledged events in a crash.
-- **Cost:** it depends on USS retrying, which is an assumption. In the burst, 2.31% of events used
+- **Cost:** it depends on USS retrying, which is an assumption. In the burst, 1.53% of events used
   up their 3 retries and were abandoned `[M]`. If USS cannot retry, rejected events are lost and a
   durable queue is needed.
 
