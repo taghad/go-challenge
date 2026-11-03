@@ -472,7 +472,13 @@ replace these values.
 
 `r` is the share of users assigned to make at least one return visit. Because
 gaps are random and events after day 56 are dropped, a few of those users do not
-return within 14 days, so the experiment also reports the realized share.
+return within 14 days, so the experiment also reports the realized share: users with
+a further event within 14 days of the event before it. It also reports the users with
+any further event before day 56.
+
+The spike slice is `[day 28, day 28 + 6h)`. Sampling includes both day 42 and day 56,
+which makes 1345 samples. Each combination of profile and `r` has one set of events
+with seed 1, and both bucket sizes run on that same set.
 
 **Cases:** both profiles, both return shares, and both bucket sizes, which makes 8
 cases.
