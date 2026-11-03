@@ -149,6 +149,7 @@ migration is implemented. Old keys are reclaimed by their expiry.
 | `GET /healthz` | Process is alive | `200` |
 | `GET /readyz` | Redis is reachable | `200`, `503` |
 | `GET /` | Frontend | `200` |
+| `GET /report` | Static [test report](TEST_REPORT.md) | `200` |
 
 ```http
 POST /v1/events
@@ -404,6 +405,7 @@ then uses a few rollups plus the recent buckets.
 │   ├── server/
 │   │   ├── config.go        # configuration from the environment
 │   │   └── main.go          # wiring, graceful shutdown
+│   ├── report/              # generates the test report from docs/results
 │   └── uss/                 # USS traffic simulator
 ├── internal/
 │   ├── estimator/
@@ -414,11 +416,13 @@ then uses a few rollups plus the recent buckets.
 │   │   └── cache.go         # boundary-limited cache
 │   ├── redisstore/          # Redis implementation of Store
 │   ├── httpapi/             # router, handlers, ingestion limiter
-│   └── web/                 # embedded index.html
+│   └── web/                 # embedded index.html and report.html
 ├── scripts/spike.sh         # collects docker stats during the spike test
 ├── docs/
 │   ├── DESIGN.md
-│   └── DECISIONS.md         # each decision, why, what was rejected, and its cost
+│   ├── DECISIONS.md         # each decision, why, what was rejected, and its cost
+│   ├── TEST_REPORT.md       # generated, with its charts in report/
+│   └── results/             # raw result summaries, with the machine
 ├── CLAUDE.md                # project rules for Claude Code
 ├── Dockerfile
 ├── docker-compose.yml
@@ -688,7 +692,12 @@ is merged into `main` with `--ff-only`, without squashing.
 
 ## Measured results
 
-Every value in this section is `[M]` unless it is marked otherwise.
+Every value in this section is `[M]` unless it is marked otherwise. The
+[test report](TEST_REPORT.md) shows the same results with charts. `cmd/report` generates it
+and the `GET /report` page from `docs/results`, and uses no clock, so a test can check that
+the committed report matches them:
+`docker compose run --rm test go run ./cmd/report -collect-quality` updates the test, coverage,
+and govulncheck results as well.
 
 **Machine:** Mac17,3, Apple M5, 10 CPUs, 16 GB, macOS 26.6.2. Docker 29.7.2 on linux/arm64,
 with 6 CPUs and 3.825 GiB, kernel 7.0.12-linuxkit. Redis 8.2.11 with jemalloc-5.3.0, and
@@ -761,8 +770,8 @@ Ramp with batches of 500, 30 s per step, 1,000,000 users, and 500 segments.
 - **In the saturated step:** `503` on 84,352 of 122,880 first attempts (68.65%), with no
   timeouts at the simulator. Final acceptance was 74.76%, with 15,509,500 events abandoned.
   The send lag p99 was 3.95 ms, so the simulator was not the limit.
-- **Peak memory in that step:** ES 287 MiB, Redis 37 MiB, simulator 1150 MiB. ES did not
-  restart.
+- **Peak memory in that step:** ES 287 MiB, Redis 37 MiB, simulator 1150 MiB. ES logged 228
+  store failures, all Redis pool timeouts, and it did not restart.
 - **After the ramp:** all 500 segments were in range, with the estimate from -2.04% to
   +2.40% of acknowledged users.
 
@@ -787,7 +796,8 @@ on the same Redis. The peak is 2,048,000. There were 15,360,000 offered events.
 | Peak memory: ES / Redis / simulator | 239 / 44 / 772 MiB |
 | Peak CPU: ES / Redis / simulator | 191% / 110% / 80% |
 
-No container restarted. The run's send lag p99 was 2.3 ms.
+ES logged 6 store failures, all Redis pool timeouts. No container restarted. The run's send
+lag p99 was 2.3 ms.
 
 ### Boundary burst
 

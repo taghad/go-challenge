@@ -1,0 +1,72 @@
+{
+  "source": "Raw test log of docker compose run --rm measure, run before the dependency update and not repeated.",
+  "users": 1000000,
+  "seed": 1,
+  "samples": 1345,
+  "cases": [
+    {
+      "profile": "uniform",
+      "return_share_percent": 0,
+      "realized_return_percent": 0.0,
+      "bucket": "6h",
+      "mean_undercount_percent": 0.9268,
+      "max_undercount_percent": 1.8368
+    },
+    {
+      "profile": "uniform",
+      "return_share_percent": 0,
+      "realized_return_percent": 0.0,
+      "bucket": "1h",
+      "mean_undercount_percent": 0.1852,
+      "max_undercount_percent": 0.3253
+    },
+    {
+      "profile": "uniform",
+      "return_share_percent": 50,
+      "realized_return_percent": 47.212,
+      "bucket": "6h",
+      "mean_undercount_percent": 0.6345,
+      "max_undercount_percent": 1.2683
+    },
+    {
+      "profile": "uniform",
+      "return_share_percent": 50,
+      "realized_return_percent": 47.212,
+      "bucket": "1h",
+      "mean_undercount_percent": 0.1268,
+      "max_undercount_percent": 0.2247
+    },
+    {
+      "profile": "spiky",
+      "return_share_percent": 0,
+      "realized_return_percent": 0.0,
+      "bucket": "6h",
+      "mean_undercount_percent": 1.6869,
+      "max_undercount_percent": 63.8632
+    },
+    {
+      "profile": "spiky",
+      "return_share_percent": 0,
+      "realized_return_percent": 0.0,
+      "bucket": "1h",
+      "mean_undercount_percent": 0.3612,
+      "max_undercount_percent": 22.4792
+    },
+    {
+      "profile": "spiky",
+      "return_share_percent": 50,
+      "realized_return_percent": 48.045,
+      "bucket": "6h",
+      "mean_undercount_percent": 0.958,
+      "max_undercount_percent": 27.8957
+    },
+    {
+      "profile": "spiky",
+      "return_share_percent": 50,
+      "realized_return_percent": 48.045,
+      "bucket": "1h",
+      "mean_undercount_percent": 0.1942,
+      "max_undercount_percent": 6.0214
+    }
+  ]
+}

@@ -56,6 +56,22 @@ func TestIndexServesFrontendWithoutStore(t *testing.T) {
 	}
 }
 
+func TestReportServesTheEmbeddedPageWithoutStore(t *testing.T) {
+	store := &fakeStore{err: errors.New("store down")}
+
+	recorder := serve(newTestRouter(t, store), get("/report"))
+
+	if recorder.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d", recorder.Code, http.StatusOK)
+	}
+	if got := recorder.Header().Get("Content-Type"); got != "text/html; charset=utf-8" {
+		t.Errorf("Content-Type = %q", got)
+	}
+	if !bytes.Equal(recorder.Body.Bytes(), web.Report) || len(web.Report) == 0 {
+		t.Error("body is not the embedded report")
+	}
+}
+
 func TestRouterLogsNoRequests(t *testing.T) {
 	var output bytes.Buffer
 	writer := gin.DefaultWriter

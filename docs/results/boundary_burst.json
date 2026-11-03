@@ -1,0 +1,27 @@
+{
+  "source": "Raw test log of TestMeasureBoundaryBurst, run before the dependency update and not repeated.",
+  "rows": [
+    {
+      "bucket": "6h",
+      "estimate_503_percent_after_boundary": 8.923,
+      "estimate_503_percent_warmup": 1.09,
+      "estimate_p50_ms": 0.001,
+      "estimate_p99_ms": 51.806,
+      "add_503": 0,
+      "add_requests": 30,
+      "add_p99_ms": 4.978,
+      "all_segments_served_ms": 15147.404
+    },
+    {
+      "bucket": "1h",
+      "estimate_503_percent_after_boundary": 8.818,
+      "estimate_503_percent_warmup": 4.628,
+      "estimate_p50_ms": 0.001,
+      "estimate_p99_ms": 144.742,
+      "add_503": 0,
+      "add_requests": 30,
+      "add_p99_ms": 4.233,
+      "all_segments_served_ms": 15225.626
+    }
+  ]
+}

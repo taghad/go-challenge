@@ -1,0 +1,320 @@
+{
+  "source": "Raw report of cmd/uss -profile burst at commit cfabc4f, on the same Redis right after the ramp, summarized by dropping per-segment detail. An idle second ES and Redis also ran in the VM.",
+  "bucket_size": "1h",
+  "base_events_per_second": 204800.0,
+  "multiplier": 10.0,
+  "peak_start_seconds": 10,
+  "peak_duration_seconds": 5,
+  "duration_seconds": 30,
+  "offered_events": 15360000,
+  "first_attempts": {
+    "attempts": 30720,
+    "acceptance_percent": 65.863,
+    "rejected_503": 10487,
+    "timeouts": 0,
+    "network_errors": 0
+  },
+  "retries": {
+    "attempts": 17510,
+    "acceptance_percent": 57.207,
+    "rejected_503": 7493,
+    "timeouts": 0,
+    "network_errors": 0
+  },
+  "final_acceptance_percent": 98.47,
+  "abandoned_events": 235000,
+  "final_latency_p99_ms": 4948.7,
+  "send_lag_p99_ms": 2.32,
+  "peak_cpu_percent": {
+    "es": 190.77,
+    "redis": 110.15,
+    "simulator": 79.89
+  },
+  "peak_memory_mib": {
+    "es": 238.5,
+    "redis": 44.4,
+    "simulator": 771.5
+  },
+  "es_store_failures": 6,
+  "es_restarts": 0,
+  "timeline": [
+    {
+      "second": 0,
+      "first_attempts": 409,
+      "first_acknowledged": 409,
+      "retries": 0,
+      "retries_acknowledged": 0,
+      "rejected_503": 0,
+      "max_latency_ms": 11.8
+    },
+    {
+      "second": 1,
+      "first_attempts": 410,
+      "first_acknowledged": 410,
+      "retries": 0,
+      "retries_acknowledged": 0,
+      "rejected_503": 0,
+      "max_latency_ms": 4.2
+    },
+    {
+      "second": 2,
+      "first_attempts": 409,
+      "first_acknowledged": 409,
+      "retries": 0,
+      "retries_acknowledged": 0,
+      "rejected_503": 0,
+      "max_latency_ms": 7.27
+    },
+    {
+      "second": 3,
+      "first_attempts": 410,
+      "first_acknowledged": 410,
+      "retries": 0,
+      "retries_acknowledged": 0,
+      "rejected_503": 0,
+      "max_latency_ms": 2.99
+    },
+    {
+      "second": 4,
+      "first_attempts": 410,
+      "first_acknowledged": 410,
+      "retries": 0,
+      "retries_acknowledged": 0,
+      "rejected_503": 0,
+      "max_latency_ms": 2.82
+    },
+    {
+      "second": 5,
+      "first_attempts": 409,
+      "first_acknowledged": 409,
+      "retries": 0,
+      "retries_acknowledged": 0,
+      "rejected_503": 0,
+      "max_latency_ms": 8.21
+    },
+    {
+      "second": 6,
+      "first_attempts": 410,
+      "first_acknowledged": 410,
+      "retries": 0,
+      "retries_acknowledged": 0,
+      "rejected_503": 0,
+      "max_latency_ms": 2.62
+    },
+    {
+      "second": 7,
+      "first_attempts": 410,
+      "first_acknowledged": 410,
+      "retries": 0,
+      "retries_acknowledged": 0,
+      "rejected_503": 0,
+      "max_latency_ms": 20.77
+    },
+    {
+      "second": 8,
+      "first_attempts": 409,
+      "first_acknowledged": 409,
+      "retries": 0,
+      "retries_acknowledged": 0,
+      "rejected_503": 0,
+      "max_latency_ms": 6.81
+    },
+    {
+      "second": 9,
+      "first_attempts": 410,
+      "first_acknowledged": 410,
+      "retries": 0,
+      "retries_acknowledged": 0,
+      "rejected_503": 0,
+      "max_latency_ms": 4.57
+    },
+    {
+      "second": 10,
+      "first_attempts": 3837,
+      "first_acknowledged": 2569,
+      "retries": 0,
+      "retries_acknowledged": 0,
+      "rejected_503": 1268,
+      "max_latency_ms": 132.37
+    },
+    {
+      "second": 11,
+      "first_attempts": 4165,
+      "first_acknowledged": 2514,
+      "retries": 474,
+      "retries_acknowledged": 244,
+      "rejected_503": 1881,
+      "max_latency_ms": 126.24
+    },
+    {
+      "second": 12,
+      "first_attempts": 4108,
+      "first_acknowledged": 1968,
+      "retries": 1537,
+      "retries_acknowledged": 708,
+      "rejected_503": 2969,
+      "max_latency_ms": 133.39
+    },
+    {
+      "second": 13,
+      "first_attempts": 4124,
+      "first_acknowledged": 1648,
+      "retries": 2489,
+      "retries_acknowledged": 977,
+      "rejected_503": 3988,
+      "max_latency_ms": 132.69
+    },
+    {
+      "second": 14,
+      "first_attempts": 4120,
+      "first_acknowledged": 1444,
+      "retries": 3393,
+      "retries_acknowledged": 1196,
+      "rejected_503": 4873,
+      "max_latency_ms": 129.33
+    },
+    {
+      "second": 15,
+      "first_attempts": 517,
+      "first_acknowledged": 343,
+      "retries": 4268,
+      "retries_acknowledged": 2457,
+      "rejected_503": 1985,
+      "max_latency_ms": 126.04
+    },
+    {
+      "second": 16,
+      "first_attempts": 396,
+      "first_acknowledged": 294,
+      "retries": 3391,
+      "retries_acknowledged": 2477,
+      "rejected_503": 1016,
+      "max_latency_ms": 118.5
+    },
+    {
+      "second": 17,
+      "first_attempts": 442,
+      "first_acknowledged": 442,
+      "retries": 1709,
+      "retries_acknowledged": 1709,
+      "rejected_503": 0,
+      "max_latency_ms": 94.59
+    },
+    {
+      "second": 18,
+      "first_attempts": 409,
+      "first_acknowledged": 409,
+      "retries": 249,
+      "retries_acknowledged": 249,
+      "rejected_503": 0,
+      "max_latency_ms": 8.58
+    },
+    {
+      "second": 19,
+      "first_attempts": 410,
+      "first_acknowledged": 410,
+      "retries": 0,
+      "retries_acknowledged": 0,
+      "rejected_503": 0,
+      "max_latency_ms": 4.43
+    },
+    {
+      "second": 20,
+      "first_attempts": 409,
+      "first_acknowledged": 409,
+      "retries": 0,
+      "retries_acknowledged": 0,
+      "rejected_503": 0,
+      "max_latency_ms": 3.03
+    },
+    {
+      "second": 21,
+      "first_attempts": 410,
+      "first_acknowledged": 410,
+      "retries": 0,
+      "retries_acknowledged": 0,
+      "rejected_503": 0,
+      "max_latency_ms": 2.46
+    },
+    {
+      "second": 22,
+      "first_attempts": 410,
+      "first_acknowledged": 410,
+      "retries": 0,
+      "retries_acknowledged": 0,
+      "rejected_503": 0,
+      "max_latency_ms": 8.52
+    },
+    {
+      "second": 23,
+      "first_attempts": 409,
+      "first_acknowledged": 409,
+      "retries": 0,
+      "retries_acknowledged": 0,
+      "rejected_503": 0,
+      "max_latency_ms": 2.94
+    },
+    {
+      "second": 24,
+      "first_attempts": 410,
+      "first_acknowledged": 410,
+      "retries": 0,
+      "retries_acknowledged": 0,
+      "rejected_503": 0,
+      "max_latency_ms": 2.91
+    },
+    {
+      "second": 25,
+      "first_attempts": 409,
+      "first_acknowledged": 409,
+      "retries": 0,
+      "retries_acknowledged": 0,
+      "rejected_503": 0,
+      "max_latency_ms": 2.44
+    },
+    {
+      "second": 26,
+      "first_attempts": 410,
+      "first_acknowledged": 410,
+      "retries": 0,
+      "retries_acknowledged": 0,
+      "rejected_503": 0,
+      "max_latency_ms": 7.8
+    },
+    {
+      "second": 27,
+      "first_attempts": 410,
+      "first_acknowledged": 410,
+      "retries": 0,
+      "retries_acknowledged": 0,
+      "rejected_503": 0,
+      "max_latency_ms": 3.96
+    },
+    {
+      "second": 28,
+      "first_attempts": 409,
+      "first_acknowledged": 409,
+      "retries": 0,
+      "retries_acknowledged": 0,
+      "rejected_503": 0,
+      "max_latency_ms": 2.62
+    },
+    {
+      "second": 29,
+      "first_attempts": 410,
+      "first_acknowledged": 410,
+      "retries": 0,
+      "retries_acknowledged": 0,
+      "rejected_503": 0,
+      "max_latency_ms": 3.97
+    }
+  ],
+  "estimate_check": {
+    "segments": 500,
+    "in_range": 500,
+    "out_of_range": 0,
+    "failed": 0,
+    "min_error_percent": -1.689,
+    "max_error_percent": 1.847
+  }
+}

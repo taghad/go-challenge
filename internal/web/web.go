@@ -8,3 +8,8 @@ import _ "embed"
 //
 //go:embed index.html
 var Index []byte
+
+// Report is the test report page. cmd/report generates it from docs/results.
+//
+//go:embed report.html
+var Report []byte

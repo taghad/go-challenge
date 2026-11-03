@@ -1,0 +1,11 @@
+{
+  "model": "Mac17,3",
+  "chip": "Apple M5",
+  "cpus": 10,
+  "memory_gb": 16,
+  "os": "macOS 26.6.2",
+  "docker": "29.7.2 on linux/arm64, with 6 CPUs and 3.825 GiB, kernel 7.0.12-linuxkit",
+  "redis": "8.2.11 with jemalloc-5.3.0",
+  "go": "1.27.3",
+  "note": "The simulator, ES, and Redis all ran in that one VM."
+}

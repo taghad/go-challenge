@@ -70,6 +70,21 @@ func TestIndexStatesThatTheNumberIsApproximate(t *testing.T) {
 	}
 }
 
+func TestIndexLinksToTheReport(t *testing.T) {
+	if !strings.Contains(string(Index), `href="/report"`) {
+		t.Error("page does not link to /report")
+	}
+}
+
+func TestReportStatesItsLimitsAndLinksBack(t *testing.T) {
+	page := string(Report)
+	for _, want := range []string{"Not production capacity", `href="/"`, "<svg"} {
+		if !strings.Contains(page, want) {
+			t.Errorf("report does not contain %q", want)
+		}
+	}
+}
+
 // The segment goes into the URL path, so it must be encoded.
 func TestIndexEncodesSegmentInURL(t *testing.T) {
 	if !regexp.MustCompile(`encodeURIComponent\(segment\)`).Match(Index) {

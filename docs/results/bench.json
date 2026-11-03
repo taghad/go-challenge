@@ -1,0 +1,29 @@
+{
+  "source": "Raw test log of docker compose run --rm bench, run before the dependency update and not repeated.",
+  "segments": 500,
+  "samples": 2000,
+  "rows": [
+    {
+      "bucket": "6h",
+      "keys": 28000,
+      "used_memory_bytes": 405219384,
+      "key_bytes": 14392,
+      "client_p50_ms": 0.905,
+      "client_p99_ms": 1.401,
+      "usec_per_call": 865.58,
+      "recomputation_share_percent": 1.443,
+      "client_mean_share_percent": 1.53
+    },
+    {
+      "bucket": "1h",
+      "keys": 168000,
+      "used_memory_bytes": 2426008768,
+      "key_bytes": 14392,
+      "client_p50_ms": 3.615,
+      "client_p99_ms": 6.805,
+      "usec_per_call": 3758.22,
+      "recomputation_share_percent": 6.264,
+      "client_mean_share_percent": 6.438
+    }
+  ]
+}

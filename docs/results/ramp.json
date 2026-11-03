@@ -1,0 +1,301 @@
+{
+  "source": "Raw report of cmd/uss -ramp at commit cfabc4f, summarized by keeping totals per step and dropping per-segment detail. An idle second ES and Redis also ran in the VM.",
+  "bucket_size": "1h",
+  "batch": 500,
+  "step_seconds": 30,
+  "users": 1000000,
+  "segments": 500,
+  "stopped_by": "saturation",
+  "highest_sustained_events_per_second": 1024000,
+  "es_store_failures": 228,
+  "es_store_pool_timeouts": 228,
+  "es_restarts": 0,
+  "steps": [
+    {
+      "offered_events_per_second": 1000,
+      "first_attempt_acceptance_percent": 100.0,
+      "first_attempt_p99_ms": 31.66,
+      "first_attempts": 60,
+      "rejected_503": 0,
+      "timeouts": 0,
+      "final_acceptance_percent": 100,
+      "abandoned_events": 0,
+      "send_lag_p99_ms": 5.89,
+      "saturated": false,
+      "saturation_reasons": [],
+      "cpu_mean_percent": {
+        "es": 0.6,
+        "redis": 0.8,
+        "simulator": 0.3
+      },
+      "memory_max_mib": {
+        "es": 12.3,
+        "redis": 12.2,
+        "simulator": 139.9
+      }
+    },
+    {
+      "offered_events_per_second": 2000,
+      "first_attempt_acceptance_percent": 100.0,
+      "first_attempt_p99_ms": 10.67,
+      "first_attempts": 120,
+      "rejected_503": 0,
+      "timeouts": 0,
+      "final_acceptance_percent": 100,
+      "abandoned_events": 0,
+      "send_lag_p99_ms": 5.89,
+      "saturated": false,
+      "saturation_reasons": [],
+      "cpu_mean_percent": {
+        "es": 1.1,
+        "redis": 1.2,
+        "simulator": 0.7
+      },
+      "memory_max_mib": {
+        "es": 12.6,
+        "redis": 12.7,
+        "simulator": 149.6
+      }
+    },
+    {
+      "offered_events_per_second": 4000,
+      "first_attempt_acceptance_percent": 100.0,
+      "first_attempt_p99_ms": 11.27,
+      "first_attempts": 240,
+      "rejected_503": 0,
+      "timeouts": 0,
+      "final_acceptance_percent": 100,
+      "abandoned_events": 0,
+      "send_lag_p99_ms": 6.12,
+      "saturated": false,
+      "saturation_reasons": [],
+      "cpu_mean_percent": {
+        "es": 2.3,
+        "redis": 2.1,
+        "simulator": 1.6
+      },
+      "memory_max_mib": {
+        "es": 12.7,
+        "redis": 13.2,
+        "simulator": 172.1
+      }
+    },
+    {
+      "offered_events_per_second": 8000,
+      "first_attempt_acceptance_percent": 100.0,
+      "first_attempt_p99_ms": 10.46,
+      "first_attempts": 480,
+      "rejected_503": 0,
+      "timeouts": 0,
+      "final_acceptance_percent": 100,
+      "abandoned_events": 0,
+      "send_lag_p99_ms": 5.76,
+      "saturated": false,
+      "saturation_reasons": [],
+      "cpu_mean_percent": {
+        "es": 4.1,
+        "redis": 3.8,
+        "simulator": 2.2
+      },
+      "memory_max_mib": {
+        "es": 12.7,
+        "redis": 14.8,
+        "simulator": 219.0
+      }
+    },
+    {
+      "offered_events_per_second": 16000,
+      "first_attempt_acceptance_percent": 100.0,
+      "first_attempt_p99_ms": 11.09,
+      "first_attempts": 960,
+      "rejected_503": 0,
+      "timeouts": 0,
+      "final_acceptance_percent": 100,
+      "abandoned_events": 0,
+      "send_lag_p99_ms": 5.65,
+      "saturated": false,
+      "saturation_reasons": [],
+      "cpu_mean_percent": {
+        "es": 8.2,
+        "redis": 7.2,
+        "simulator": 4.3
+      },
+      "memory_max_mib": {
+        "es": 12.8,
+        "redis": 22.1,
+        "simulator": 225.3
+      }
+    },
+    {
+      "offered_events_per_second": 32000,
+      "first_attempt_acceptance_percent": 100.0,
+      "first_attempt_p99_ms": 7.49,
+      "first_attempts": 1920,
+      "rejected_503": 0,
+      "timeouts": 0,
+      "final_acceptance_percent": 100,
+      "abandoned_events": 0,
+      "send_lag_p99_ms": 3.25,
+      "saturated": false,
+      "saturation_reasons": [],
+      "cpu_mean_percent": {
+        "es": 15.0,
+        "redis": 9.1,
+        "simulator": 7.5
+      },
+      "memory_max_mib": {
+        "es": 12.9,
+        "redis": 22.4,
+        "simulator": 244.7
+      }
+    },
+    {
+      "offered_events_per_second": 64000,
+      "first_attempt_acceptance_percent": 100.0,
+      "first_attempt_p99_ms": 5.43,
+      "first_attempts": 3840,
+      "rejected_503": 0,
+      "timeouts": 0,
+      "final_acceptance_percent": 100,
+      "abandoned_events": 0,
+      "send_lag_p99_ms": 1.56,
+      "saturated": false,
+      "saturation_reasons": [],
+      "cpu_mean_percent": {
+        "es": 22.2,
+        "redis": 12.7,
+        "simulator": 8.0
+      },
+      "memory_max_mib": {
+        "es": 13.2,
+        "redis": 22.6,
+        "simulator": 257.7
+      }
+    },
+    {
+      "offered_events_per_second": 128000,
+      "first_attempt_acceptance_percent": 100.0,
+      "first_attempt_p99_ms": 3.4,
+      "first_attempts": 7680,
+      "rejected_503": 0,
+      "timeouts": 0,
+      "final_acceptance_percent": 100,
+      "abandoned_events": 0,
+      "send_lag_p99_ms": 1.35,
+      "saturated": false,
+      "saturation_reasons": [],
+      "cpu_mean_percent": {
+        "es": 31.3,
+        "redis": 15.7,
+        "simulator": 9.0
+      },
+      "memory_max_mib": {
+        "es": 17.6,
+        "redis": 23.3,
+        "simulator": 260.4
+      }
+    },
+    {
+      "offered_events_per_second": 256000,
+      "first_attempt_acceptance_percent": 100.0,
+      "first_attempt_p99_ms": 3.14,
+      "first_attempts": 15360,
+      "rejected_503": 0,
+      "timeouts": 0,
+      "final_acceptance_percent": 100,
+      "abandoned_events": 0,
+      "send_lag_p99_ms": 1.29,
+      "saturated": false,
+      "saturation_reasons": [],
+      "cpu_mean_percent": {
+        "es": 36.3,
+        "redis": 20.5,
+        "simulator": 11.4
+      },
+      "memory_max_mib": {
+        "es": 21.5,
+        "redis": 24.1,
+        "simulator": 262.4
+      }
+    },
+    {
+      "offered_events_per_second": 512000,
+      "first_attempt_acceptance_percent": 100.0,
+      "first_attempt_p99_ms": 29.43,
+      "first_attempts": 30720,
+      "rejected_503": 0,
+      "timeouts": 0,
+      "final_acceptance_percent": 100,
+      "abandoned_events": 0,
+      "send_lag_p99_ms": 1.37,
+      "saturated": false,
+      "saturation_reasons": [],
+      "cpu_mean_percent": {
+        "es": 58.2,
+        "redis": 37.2,
+        "simulator": 19.8
+      },
+      "memory_max_mib": {
+        "es": 70.0,
+        "redis": 31.1,
+        "simulator": 268.7
+      }
+    },
+    {
+      "offered_events_per_second": 1024000,
+      "first_attempt_acceptance_percent": 100.0,
+      "first_attempt_p99_ms": 11.37,
+      "first_attempts": 61440,
+      "rejected_503": 0,
+      "timeouts": 0,
+      "final_acceptance_percent": 100,
+      "abandoned_events": 0,
+      "send_lag_p99_ms": 1.06,
+      "saturated": false,
+      "saturation_reasons": [],
+      "cpu_mean_percent": {
+        "es": 106.8,
+        "redis": 68.9,
+        "simulator": 35.0
+      },
+      "memory_max_mib": {
+        "es": 127.7,
+        "redis": 34.0,
+        "simulator": 273.0
+      }
+    },
+    {
+      "offered_events_per_second": 2048000,
+      "first_attempt_acceptance_percent": 31.354,
+      "first_attempt_p99_ms": 120.83,
+      "first_attempts": 122880,
+      "rejected_503": 84352,
+      "timeouts": 0,
+      "final_acceptance_percent": 74.757,
+      "abandoned_events": 15509500,
+      "send_lag_p99_ms": 3.95,
+      "saturated": true,
+      "saturation_reasons": [
+        "first_attempt_acceptance"
+      ],
+      "cpu_mean_percent": {
+        "es": 187.8,
+        "redis": 94.2,
+        "simulator": 82.9
+      },
+      "memory_max_mib": {
+        "es": 286.9,
+        "redis": 37.1,
+        "simulator": 1150.0
+      }
+    }
+  ],
+  "estimate_check": {
+    "segments": 500,
+    "in_range": 500,
+    "out_of_range": 0,
+    "failed": 0,
+    "min_error_percent": -2.044,
+    "max_error_percent": 2.403
+  }
+}

@@ -1,0 +1,68 @@
+{
+  "source": "go run ./cmd/report -collect-quality, in the compose test service",
+  "generated_at": "2026-11-03T21:55:46Z",
+  "go": "go1.27.3",
+  "test_command": "go test -p 1 -race -count=1 -cover -json ./...",
+  "tests_passed": true,
+  "race_enabled": true,
+  "packages": [
+    {
+      "name": "cmd/report",
+      "passed": 19,
+      "failed": 0,
+      "skipped": 0,
+      "coverage_percent": 87.8
+    },
+    {
+      "name": "cmd/server",
+      "passed": 120,
+      "failed": 0,
+      "skipped": 0,
+      "coverage_percent": 96.6
+    },
+    {
+      "name": "cmd/uss",
+      "passed": 72,
+      "failed": 0,
+      "skipped": 0,
+      "coverage_percent": 91.3
+    },
+    {
+      "name": "internal/estimator",
+      "passed": 129,
+      "failed": 0,
+      "skipped": 0,
+      "coverage_percent": 100
+    },
+    {
+      "name": "internal/httpapi",
+      "passed": 54,
+      "failed": 0,
+      "skipped": 0,
+      "coverage_percent": 100
+    },
+    {
+      "name": "internal/redisstore",
+      "passed": 16,
+      "failed": 0,
+      "skipped": 2,
+      "coverage_percent": 100
+    },
+    {
+      "name": "internal/web",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "coverage_percent": null
+    }
+  ],
+  "vet_clean": true,
+  "gofmt_clean": true,
+  "govulncheck_version": "v1.9.0",
+  "govulncheck_findings": [
+    {
+      "id": "GO-2026-5932",
+      "level": "module"
+    }
+  ]
+}

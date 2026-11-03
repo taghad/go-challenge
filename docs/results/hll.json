@@ -1,0 +1,35 @@
+{
+  "source": "Raw test log of docker compose run --rm measure, run before the dependency update and not repeated.",
+  "results": [
+    {
+      "users": 1000,
+      "errors_percent": [
+        -0.4,
+        -0.2,
+        -0.1,
+        -0.5,
+        0.6
+      ]
+    },
+    {
+      "users": 100000,
+      "errors_percent": [
+        1.012,
+        0.699,
+        0.332,
+        -0.581,
+        -0.282
+      ]
+    },
+    {
+      "users": 1000000,
+      "errors_percent": [
+        0.5706,
+        -2.1141,
+        -0.5746,
+        0.6098,
+        -0.8504
+      ]
+    }
+  ]
+}
