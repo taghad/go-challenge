@@ -4,14 +4,15 @@ The Estimation Service (ES) receives `(user_id, segment)` pairs from the User
 Segmentation Service (USS) and answers one question: how many users are in a
 segment right now?
 
-**Status:** design approved, implementation in progress. Every capacity and
-accuracy number below is an estimate until the [results](#measured-results)
-section is filled in.
+**Status:** implemented and measured. The results and their limits are under
+[measured results](#measured-results), and the reasons are in
+[DECISIONS.md](DECISIONS.md). `[E]` remains only where nothing has measured a value.
 
 **Number labels**
 
-- `[M]` measured on a stated machine.
-- `[E]` estimated. This includes calculations, values taken from Redis
+- `[M]` measured on the machine stated under [measured results](#measured-results).
+- `[calculated]` computed from `[M]` values, without a run of its own.
+- `[E]` estimated. This includes calculations from estimates, values taken from Redis
   documentation that have not been verified here, and configuration defaults
   that have not been validated by a test yet.
 
@@ -28,7 +29,7 @@ section is filled in.
 | Question | Decision | Reason |
 |---|---|---|
 | Does a repeat event renew the two weeks? | Yes | Approved. The estimate is the number of distinct users with an event in the last 14 days. |
-| Is an approximate count acceptable? | Yes | Approved. About 0.81% standard error `[E]`. |
+| Is an approximate count acceptable? | Yes | Approved. About 0.81% standard error `[E]`, from Redis documentation. The largest error measured was 2.11% `[M]`. |
 | Which time does an event use? | Time of receipt at ES | USS sends no timestamp. A retried event renews from the retry time. |
 | Does USS retry after a `503`? | Assumed yes, at most 3 times `[E]` in `cmd/uss` | If it does not, rejected events are lost and a durable queue is needed. |
 | Is authentication in scope? | No | ES is assumed to run on an internal network. |
@@ -43,9 +44,9 @@ memberships), and 500 segments.
 | | Redis sorted sets | Postgres | **Time-bucketed Redis HLL (chosen)** |
 |---|---|---|---|
 | Write | `ZADD seg now user` | Upsert `(segment, user_id, last_seen)` | `PFADD` into the current bucket |
-| Accuracy | Exact | Exact | About 0.81% standard error `[E]` |
-| Size in scenario | About 5 GB RAM `[E]` | About 5-8 GB disk `[E]` | At most 344 MB RAM `[E]` |
-| Size at 10x memberships | About 50 GB RAM `[E]` | About 50-80 GB disk `[E]` | At most 344 MB RAM `[E]` |
+| Accuracy | Exact | Exact | About 0.81% standard error `[E]`; largest measured error 2.11% `[M]` |
+| Size in scenario | About 5 GB RAM `[E]` | About 5-8 GB disk `[E]` | At most 2.43 GB RAM at 1h `[M]` |
+| Size at 10x memberships | About 50 GB RAM `[E]` | About 50-80 GB disk `[E]` | At most 2.43 GB RAM at 1h `[M]` |
 | Expiry | Periodic cleanup | Partitions or a delete job | Key expiry |
 | Main weakness | RAM grows with memberships | Costly writes and counts | Approximate; cannot list users |
 
@@ -99,11 +100,12 @@ boundary and grows until the next one, so a user can drop out up to `S` early.
 - Early removal is always an **undercount**. It never adds users.
 - The measured total error can still go either way, because HLL noise is
   two-sided and sits on top of the boundary undercount.
-- **The share of time lost is not the share of users lost.** `S / 14d` is 1.8%
-  for 6h, but the undercount depends on how many users have their only event in
-  the dropped slice. If a campaign brought 30% of a segment's users within one
-  6h slice and they never returned, the estimate can be about 30% low for up to
-  6h before they would have expired `[E]`.
+- **The share of time lost is not the share of users lost.** `S / 14d` is 0.3%
+  for 1h, but the undercount depends on how many users have their only event in
+  the dropped slice. If a campaign brought 30% of all users within one 6h slice and
+  they never returned, the largest undercount at 1h is 22.48%, and at 6h it is 63.86%
+  `[M]`. It exceeds 30% because those users are a larger share of the true count at
+  that moment.
 
 The real undercount is therefore measured, not derived from time. See the
 [test plan](#test-plan).
@@ -115,10 +117,10 @@ seconds and divide 14 days exactly, or ES refuses to start. The default was chos
 from measurements, using the rule below. All four rules held, with 1.27%, 6.8 ms,
 2.43 GB, and 6.3% `[M]`, so the default is 1h.
 
-| Bucket size | Buckets | Max memory, 500 segments `[E]` | Uncached estimate `[E]` | Time not covered, worst case |
+| Bucket size | Buckets | Max memory, 500 segments `[M]` | Uncached estimate p99 `[M]` | Time not covered, worst case |
 |---|---:|---:|---:|---:|
-| 6h | 56 | 344 MB | About 2 ms | 1.8% of the window |
-| 1h | 336 | 2.06 GB | About 11 ms | 0.3% of the window |
+| 6h | 56 | 405.2 MB | 1.4 ms | 1.8% of the window |
+| 1h | 336 | 2.43 GB | 6.8 ms | 0.3% of the window |
 
 **Decision rule, fixed before measuring.** Keep 6h unless all of these hold, in
 which case use 1h. The thresholds are judgment calls, not measurements, and their
@@ -228,9 +230,9 @@ delay writes. Each ES instance caches estimates in memory.
   per instance. When that limit is full, the estimate returns `503` with
   `Retry-After`. Cached responses never touch the limit.
 
-Estimated Redis load `[E]`: 500 segments with a 30s TTL is about 17 recomputes
-per second per instance. At about 2 ms each, that is about 3% of Redis time for
-6h buckets, and about 18% for 1h buckets.
+Redis load: 500 segments with a 30s TTL is 16.7 recomputes per second per instance.
+With the measured time inside Redis, that is 1.44% of Redis time for 6h buckets and
+6.26% for 1h buckets `[calculated]`.
 
 ### Timeouts
 
@@ -344,9 +346,9 @@ memory stays bounded, and USS absorbs the spike through retries.
 
 Estimated load `[E]`: 5 events per user per day for 10M users is about 580 events
 per second, with a peak of about 5.8k. A further 10x spike is 58k events per
-second, which is about 116 requests per second at 500 events per batch. A single
-Redis is estimated to handle about 100k operations per second `[E]`. The actual
-limit is found by the spike test.
+second, which is about 116 requests per second at 500 events per batch. The ramp
+sustained 1,024,000 events per second `[M]`, which is far above this. That number comes
+from one laptop with repeated users, as stated under [limits](#limits-of-these-results).
 
 **Reads.** The cache and `singleflight` limit how much read traffic reaches Redis.
 `MAX_INFLIGHT_ESTIMATE` limits concurrent recomputations, and when it is full ES
@@ -414,7 +416,9 @@ then uses a few rollups plus the recent buckets.
 │   ├── httpapi/             # router, handlers, ingestion limiter
 │   └── web/                 # embedded index.html
 ├── scripts/spike.sh         # collects docker stats during the spike test
-├── docs/DESIGN.md
+├── docs/
+│   ├── DESIGN.md
+│   └── DECISIONS.md         # each decision, why, what was rejected, and its cost
 ├── CLAUDE.md                # project rules for Claude Code
 ├── Dockerfile
 ├── docker-compose.yml
@@ -492,7 +496,8 @@ the [decision rule](#bucket-size).
 **Expected result, not a measurement** `[E]`: under uniform arrivals, the maximum
 6h undercount is about 1.8% at `r = 0%` and about 1.2% at `r = 50%`, right after a
 boundary. The time-averaged undercount is about half of that. If measurements
-agree, rule 1 will hold, and the choice will depend on rules 2 to 4.
+agree, rule 1 will hold, and the choice will depend on rules 2 to 4. The measured values
+are 1.84% and 1.27%, with means of 0.93% and 0.63% `[M]`, so rule 1 held.
 
 ### 1h and 6h benchmark
 
@@ -683,18 +688,146 @@ is merged into `main` with `--ff-only`, without squashing.
 
 ## Measured results
 
-Not measured yet. This section is filled in by step 23, along with the machine
-used, and the matching `[E]` values above are replaced.
+Every value in this section is `[M]` unless it is marked otherwise.
+
+**Machine:** Mac17,3, Apple M5, 10 CPUs, 16 GB, macOS 26.6.2. Docker 29.7.2 on linux/arm64,
+with 6 CPUs and 3.825 GiB, kernel 7.0.12-linuxkit. Redis 8.2.11 with jemalloc-5.3.0, and
+Go 1.27.3. The simulator, ES, and Redis all ran in that one VM.
+
+**Code:** the burst ran after the dependency update. Everything else ran before it and was
+not repeated. The ramp and the burst ran with 6h buckets, the default at that time.
+
+### Bucket size decision
+
+| Rule | Limit | Measured | Holds |
+|---|---:|---:|---|
+| 1. Worst 6h undercount, decision scenario | above 1% | 1.27% | Yes |
+| 2. Uncached estimate p99 at 1h | at most 20 ms | 6.8 ms | Yes |
+| 3. Redis memory at 1h, 500 dense segments | at most 2.5 GB | 2.43 GB | Yes |
+| 4. Recomputation share of Redis time at 1h | at most 20% | 6.3% `[calculated]` | Yes |
+
+All four hold, so the final default bucket size is **1h**.
+
+### HyperLogLog accuracy
+
+On real Redis through the Store, with 5 independent sets of users at each size.
+
+| Users | Error in each set | Largest absolute error |
+|---:|---|---:|
+| 1,000 | -0.40, -0.20, -0.10, -0.50, +0.60% | 0.60% |
+| 100,000 | +1.01, +0.70, +0.33, -0.58, -0.28% | 1.01% |
+| 1,000,000 | +0.57, -2.11, -0.57, +0.61, -0.85% | 2.11% |
+
+### Boundary undercount
+
+In process with exact sets, with 1,000,000 users, seed 1, and 1345 samples. The traffic
+model is an assumption `[E]`, so these values are measured only for that model.
+
+| Profile | `r` | Realized return share, within 14 days | 6h mean / max | 1h mean / max |
+|---|---:|---:|---:|---:|
+| uniform | 0% | 0% | 0.93% / 1.84% | 0.19% / 0.33% |
+| uniform | 50% | 47.21% | 0.63% / 1.27% | 0.13% / 0.22% |
+| spiky | 0% | 0% | 1.69% / 63.86% | 0.36% / 22.48% |
+| spiky | 50% | 48.05% | 0.96% / 27.90% | 0.19% / 6.02% |
+
+### Benchmark at 6h and 1h
+
+500 fully dense segments on real Redis, with 2000 uncached calls at each size.
+
+| | 6h | 1h |
+|---|---:|---:|
+| Keys | 28,000 | 168,000 |
+| `used_memory` | 405.2 MB | 2.43 GB (2.26 GiB) |
+| `MEMORY USAGE` of one key | 14,392 bytes | 14,392 bytes |
+| Client latency p50 / p99 | 0.9 / 1.4 ms | 3.6 / 6.8 ms |
+| Time inside Redis, `usec_per_call` | 866 | 3758 |
+| Recomputation share of Redis time `[calculated]` | 1.44% | 6.26% |
+| The same share from client mean latency `[calculated]` | 1.53% | 6.44% |
+
+### Saturation
+
+Ramp with batches of 500, 30 s per step, 1,000,000 users, and 500 segments.
+
+| Offered events/s | First-attempt acceptance | First-attempt p99 | Mean CPU, ES / Redis / simulator |
+|---:|---:|---:|---:|
+| 1,000 to 256,000, 9 steps | 100% | at most 11.3 ms | at most 39% / 19% / 11% |
+| 512,000 | 100% | 6.5 ms | 59% / 38% / 19% |
+| 1,024,000 | 100% | 11.8 ms | 116% / 72% / 37% |
+| 2,048,000 | 27.60% | 128.6 ms | 188% / 93% / 87% |
+
+- **Saturation point:** 2,048,000 events per second, by first-attempt acceptance. The
+  highest sustained rate is 1,024,000.
+- **In the saturated step:** `503` on 88,965 of 122,880 first attempts (72.40%), with no
+  timeouts at the simulator. Final acceptance was 69.81%, with 18,548,500 events abandoned.
+  The send lag p99 was 5.6 ms, so the simulator was not the limit.
+- **Peak memory in that step:** ES 316 MiB, Redis 64 MiB, simulator 1209 MiB. ES logged 5279
+  store failures, 4992 of them Redis pool timeouts, and it did not restart.
+- **After the ramp:** all 500 segments were in range, with the estimate from -2.29% to
+  +2.39% of acknowledged users.
+
+### Burst
+
+A base of 204,800 events per second, 10x from 10 s to 15 s, in a 30 s run, on a new Redis. The
+peak is 2,048,000. There were 15,360,000 offered events.
 
 | Result | Value |
-|---|---|
-| Test machine | Not measured |
-| HLL error at 1k, 100k, 1M | Not measured |
-| Boundary undercount, uniform, 1h and 6h, each return share | Not measured |
-| Boundary undercount, spiky, 1h and 6h, each return share | Not measured |
-| Realized return share | Not measured |
-| Uncached estimate p50 and p99, 1h and 6h | Not measured |
-| Redis memory, 500 dense segments, 1h and 6h | Not measured |
-| Recomputation share of Redis time, 1h and 6h (calculated) | Not measured |
-| Saturation point | Not measured |
-| Final default bucket size | Not decided |
+|---|---:|
+| First-attempt acceptance, whole run | 64.41% |
+| First-attempt acceptance, in the five seconds from 10 s | 48.10% `[calculated]` |
+| Final acceptance | 97.69% |
+| Abandoned events | 354,500 (2.31%) |
+| `503` rate, first attempts | 35.59% |
+| `503` rate, retries | 47.50% |
+| Timeouts and network errors at the simulator | 0 |
+| Final latency p99, including retry waits | 5060 ms |
+| **Time to recover after the peak** | **3 s**, at a resolution of 1 s |
+| Last retry finished | in the second from 19 s, which is 4 to 5 s after the peak |
+| Estimate check after the burst | 500 of 500 segments in range, -1.91% to +1.58% of acknowledged users |
+| Peak memory: ES / Redis / simulator | 186 / 88 / 838 MiB |
+| Peak CPU: ES / Redis / simulator | 193% / 107% / 82% |
+
+ES logged 150 store failures, all Redis pool timeouts. No container restarted. The run's send
+lag p99 was 2.6 ms.
+
+### Boundary burst
+
+In process with real Redis, on 500 dense segments, with a writer at 1000 events per second.
+
+| For the 15 s after the boundary | 6h | 1h |
+|---|---:|---:|
+| Estimate `503` rate | 8.92% | 8.82% |
+| Estimate `503` rate during the warm-up | 1.09% | 4.63% |
+| Estimate latency p50 / p99 | 0.001 / 51.8 ms | 0.001 / 144.7 ms |
+| `Add` `503` | 0 of 30 | 0 of 30 |
+| `Add` p99 | 4.98 ms | 4.23 ms |
+| Time until all segments were served | 15.15 s | 15.23 s |
+
+### Dependencies
+
+`govulncheck` v1.9.0 after the update reports 0 vulnerabilities that the code reaches and 0 in
+imported packages. One remains at module level: GO-2026-5932, for the unmaintained
+`x/crypto/openpgp` package, which the code does not call. Its fix has no tagged version yet.
+
+### Limits of these results
+
+- **Memory limit.** A fully dense segment at 1h uses 4.85 MB. So `3gb` holds about 620 fully
+  dense segments at 1h, taken as 3 x 10^9 bytes `[calculated]`. Redis reads `3gb` as
+  3,221,225,472 bytes `[M]`, which gives about 664 `[calculated]`. Beyond that, writes return
+  `503`, and `noeviction` keeps the data. The challenge asks for hundreds of segments, and
+  sparse keys use less, but nothing limits the number of segment names.
+- **Throughput is not production capacity.** It comes from one laptop, with the simulator in
+  the same VM as ES and Redis. It also uses repeated users: distinct users reached the
+  1,000,000 limit by the 256,000 step, so later steps mostly repeated users, and `PFADD` on
+  new users could be slower `[E]`.
+- **Throughput was not run at 1h.** A write touches only the current bucket, so the bucket
+  size should not change it `[E]`, but this was not measured.
+- **The 15 s boundary result is likely shaped by the test.** The queriers wait a fixed 1 s
+  after a `503`, and 32 flights fit each wave, so 500 segments need about 15.6 s
+  `[calculated]`. The 6h and 1h results are nearly equal although `PFCOUNT` differs by about
+  4x, which fits this explanation. It was not tested on its own.
+- **`Add` p99 in the boundary burst has only 30 samples**, so it equals the maximum.
+- **Accuracy has 5 sets at each size.** One error at 1,000,000 users was 2.11%, close to the
+  test's limit of 2.43%.
+- **The recomputation share is calculated**, from the measured time per call. All 500 segments
+  were not queried continuously in a separate run.
+- **Undercount depends on an assumed traffic model.** Real USS data should replace it.
