@@ -342,14 +342,14 @@ All tests run in Docker.
 
 ### Boundary error experiment
 
-This runs with an injected clock and exact per-bucket sets, without HLL, so that
-it isolates boundary error from HLL error.
+This is a simple in-process simulation with exact per-bucket sets. It uses neither
+Redis nor HLL, so it isolates boundary error from HLL error.
 
 - **Ground truth:** distinct users with an event in the exact last 14 days.
 - **Compared with:** distinct users in the bucket window.
 - **Undercount:** `(truth - window count) / truth`, which is never negative.
-- **Reported:** mean and maximum undercount for every run in the matrix below,
-  including spiky traffic, along with the seeds and the realized return share.
+- **Reported:** mean and maximum undercount for each of the 8 cases below,
+  including spiky traffic, along with the seed and the realized return share.
 
 #### Traffic model
 
@@ -365,22 +365,22 @@ replace these values.
 | First event, uniform profile | Uniformly random across the simulated period |
 | First event, spiky profile | As uniform, except 30% of users have their first event in one 6h slice |
 | Spike position | Aligned to a 6h bucket, on day 28, so that it leaves the window during sampling |
-| Return share `r` | 0%, 50%, and 90% |
+| Return share `r` | 0% and 50% |
 | Single-visit user, share `1 - r` | One event only |
 | Returning user, share `r` | 1 to 8 further events (uniform), with exponential gaps of mean 3 days |
 | Events after day 56 | Dropped |
-| Seeds | 1, 2, and 3 |
+| Seed | 1 |
 
 `r` is the share of users assigned to make at least one return visit. Because
 gaps are random and events after day 56 are dropped, a few of those users do not
 return within 14 days, so the experiment also reports the realized share.
 
-**Run matrix:** both profiles, all three return shares, and both bucket sizes,
-for each seed. That is 36 runs.
+**Cases:** both profiles, both return shares, and both bucket sizes, which makes 8
+cases.
 
 **Decision scenario:** uniform profile, `r = 50%`, 6h buckets, taking the maximum
-undercount across seeds. Every other run is reported, but only this one is used
-by rule 1 of the [decision rule](#bucket-size).
+undercount. Every other case is reported, but only this one is used by rule 1 of
+the [decision rule](#bucket-size).
 
 **Expected result, not a measurement** `[E]`: under uniform arrivals, the maximum
 6h undercount is about 1.8% at `r = 0%` and about 1.2% at `r = 50%`, right after a
@@ -389,12 +389,16 @@ agree, rule 1 will hold, and the choice will depend on rules 2 to 4.
 
 ### 1h and 6h benchmark
 
-- Uncached estimate latency (p50 and p99) and ingestion throughput.
-- Redis memory for fully dense keys. A benchmark-only Redis uses
+- Uncached `PFCOUNT` latency (p50 and p99), on real Redis.
+- Redis memory for fully dense keys, on real Redis. A benchmark-only Redis uses
   `hll-sparse-max-bytes 0` to force the worst case, and the dense encoding is
   checked with `PFDEBUG ENCODING`.
-- Redis time used by recomputation with all segments queried.
+- The recomputation share of Redis time is calculated from the measured `PFCOUNT`
+  latency and the recompute rate. It is not run as a separate experiment.
 - The default is then chosen with the [decision rule](#bucket-size).
+
+Measurements use real Redis only for HLL accuracy, this benchmark, and the spike
+test. Ingestion throughput comes from the spike test.
 
 ### Spike test
 
@@ -415,19 +419,19 @@ with ES and Redis. They are not a production capacity prediction.
 
 ### Thresholds
 
-These values decide outcomes, so they must not change after results are seen. A
-threshold is marked as the project owner's decision only after the owner confirms
-it. Steps 19 to 21 do not start until all of them are confirmed.
+These values decide outcomes, so they must not change after results are seen. The
+project owner confirmed all of them as their decision. They are assumptions,
+because no real USS data exists to derive them from.
 
 | Threshold | Value | Status |
 |---|---:|---|
-| Rule 1: worst 6h undercount, decision scenario | above 1% | Proposed, awaiting owner confirmation |
-| Rule 2: uncached estimate p99 at 1h | at most 20 ms | Proposed, awaiting owner confirmation |
-| Rule 3: Redis memory at 1h, 500 dense segments | at most 2.5 GB | Proposed, awaiting owner confirmation |
-| Rule 4: recomputation share of Redis time at 1h | at most 20% | Proposed, awaiting owner confirmation |
-| Saturation: accepted share of offered events | below 99% | Proposed, awaiting owner confirmation |
-| Saturation: ingestion p99 | above 500 ms | Proposed, awaiting owner confirmation |
-| After a spike: estimate against acknowledged users | within 2.43% | Proposed, awaiting owner confirmation |
+| Rule 1: worst 6h undercount, decision scenario | above 1% | Owner decision, assumption |
+| Rule 2: uncached estimate p99 at 1h | at most 20 ms | Owner decision, assumption |
+| Rule 3: Redis memory at 1h, 500 dense segments | at most 2.5 GB | Owner decision, assumption |
+| Rule 4: recomputation share of Redis time at 1h | at most 20% | Owner decision, assumption |
+| Saturation: accepted share of offered events | below 99% | Owner decision, assumption |
+| Saturation: ingestion p99 | above 500 ms | Owner decision, assumption |
+| After a spike: estimate against acknowledged users | within 2.43% | Owner decision, assumption |
 
 ## Implementation plan
 
@@ -454,8 +458,8 @@ Each step is one small commit, with its tests.
 16. `build: add application Dockerfile and compose service`
 17. `feat(uss): add USS traffic simulator`
 18. `test: measure HyperLogLog accuracy`
-19. `test: measure boundary error under uniform and spiky traffic`
-20. `test: benchmark 1h and 6h bucket sizes`
+19. `test: simulate boundary error under uniform and spiky traffic`
+20. `test: benchmark PFCOUNT and Redis memory at 1h and 6h`
 21. `test: add spike test to find the saturation point`
 22. `feat(server): set the bucket size default from measurements`, only if the
     decision rule selects 1h
@@ -479,5 +483,6 @@ used, and the matching `[E]` values above are replaced.
 | Realized return share | Not measured |
 | Uncached estimate p50 and p99, 1h and 6h | Not measured |
 | Redis memory, 500 dense segments, 1h and 6h | Not measured |
+| Recomputation share of Redis time, 1h and 6h (calculated) | Not measured |
 | Saturation point | Not measured |
 | Final default bucket size | Not decided |
