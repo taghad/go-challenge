@@ -311,9 +311,11 @@ non-root user.
 ### Frontend
 
 One `index.html` with plain JavaScript, embedded in the binary and served from
-`GET /` on the same port. It has two forms: submit a `(user_id, segment)` pair,
-and get an estimate. It shows `as_of` and states that the number is approximate.
-A number can be up to one cache TTL old, which is why local compose uses `5s`.
+`GET /` on the same port. It has no framework, CDN, or external fonts, and it follows
+the system light or dark theme and fits a mobile width. The estimate is the main part
+of the page, with a second form to send a test event. It shows `as_of` and states that
+the number is approximate. A number can be up to one cache TTL old, which is why local
+compose uses `5s`.
 
 All output is rendered with `textContent`, so nothing a user typed or the server
 returned can become markup. The segment is encoded with `encodeURIComponent` in the

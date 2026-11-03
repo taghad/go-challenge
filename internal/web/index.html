@@ -5,58 +5,153 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Estimation Service</title>
 <style>
-  :root { color-scheme: light dark; }
-  body { font-family: system-ui, sans-serif; max-width: 32rem; margin: 2rem auto; padding: 0 1rem; line-height: 1.5; }
-  form { display: grid; gap: 0.75rem; margin: 1rem 0; }
-  label { display: grid; gap: 0.25rem; }
-  input, button { font: inherit; padding: 0.4rem 0.6rem; }
-  button { justify-self: start; }
-  output { display: block; min-height: 1.5rem; overflow-wrap: anywhere; }
-  .error { color: #c62828; }
-  @media (prefers-color-scheme: dark) { .error { color: #ef9a9a; } }
-  .value { font-size: 2rem; font-weight: 600; }
-  .note { font-size: 0.9rem; opacity: 0.75; }
+  :root {
+    color-scheme: light dark;
+    --page: #f5f5f2;
+    --surface: #ffffff;
+    --text: #1d1f21;
+    --muted: #5e6469;
+    --line: #d9d9d4;
+    --field: #ffffff;
+    --accent: #1f5f8b;
+    --accent-text: #ffffff;
+    --error: #b3261e;
+    --success: #1b6e3c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --page: #15171a;
+      --surface: #1e2124;
+      --text: #eceded;
+      --muted: #a2a8ad;
+      --line: #363a3e;
+      --field: #15171a;
+      --accent: #7cb9e2;
+      --accent-text: #10222e;
+      --error: #f2a29b;
+      --success: #8bd3a6;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--page);
+    color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.5;
+  }
+  main {
+    display: grid;
+    gap: 1.5rem;
+    max-width: 40rem;
+    margin: 0 auto;
+    padding: 2.5rem 1rem;
+  }
+  header { color: var(--muted); font-size: 0.95rem; font-weight: 600; }
+
+  section {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+  }
+  h1, h2 { margin: 0 0 1rem; line-height: 1.25; }
+  h1 { font-size: 1.5rem; }
+  h2 { font-size: 1.05rem; }
+
+  form { display: grid; gap: 0.75rem; }
+  .row { display: grid; grid-template-columns: 1fr auto; gap: 0.5rem; align-items: end; }
+  label { display: grid; gap: 0.25rem; font-size: 0.875rem; font-weight: 600; min-width: 0; }
+  input, button {
+    width: 100%;
+    min-height: 2.75rem;
+    border-radius: 0.5rem;
+    font: inherit;
+    font-weight: 400;
+    padding: 0.5rem 0.75rem;
+  }
+  input { background: var(--field); border: 1px solid var(--line); color: var(--text); }
+  button {
+    background: var(--accent);
+    border: 1px solid var(--accent);
+    color: var(--accent-text);
+    cursor: pointer;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  button:hover { filter: brightness(1.1); }
+  input:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .secondary { background: transparent; color: var(--accent); justify-self: start; width: auto; }
+
+  .result { margin-top: 1.5rem; overflow-wrap: anywhere; }
+  .caption { color: var(--muted); font-size: 0.95rem; }
+  .value {
+    font-size: clamp(2.75rem, 13vw, 4.5rem);
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+  .value:empty, .caption:empty, .message:empty { display: none; }
+  .note { border-top: 1px solid var(--line); color: var(--muted); font-size: 0.875rem; margin: 1.5rem 0 0; padding-top: 1rem; }
+  .message { font-size: 0.95rem; margin-top: 0.75rem; overflow-wrap: anywhere; }
+  .error { color: var(--error); }
+  .success { color: var(--success); }
+
+  @media (max-width: 30rem) {
+    main { padding: 1.25rem 1rem; }
+    section { padding: 1.25rem; }
+    .row { grid-template-columns: 1fr; }
+    .secondary { justify-self: stretch; width: 100%; }
+  }
 </style>
 </head>
 <body>
-<h1>Estimation Service</h1>
+<main>
+  <header>Estimation Service</header>
 
-<section>
-  <h2>Submit an event</h2>
-  <form id="event-form">
-    <label>User ID
-      <input id="event-user" required maxlength="128" autocomplete="off">
-    </label>
-    <label>Segment
-      <input id="event-segment" required maxlength="64" pattern="[a-zA-Z0-9_\-]+" autocomplete="off">
-    </label>
-    <button type="submit">Submit</button>
-  </form>
-  <output id="event-result" for="event-user event-segment"></output>
-</section>
+  <section aria-labelledby="estimate-title">
+    <h1 id="estimate-title">How many users are in a segment?</h1>
+    <form id="estimate-form">
+      <div class="row">
+        <label>Segment
+          <input id="estimate-segment" required maxlength="64" pattern="[a-zA-Z0-9_\-]+" autocomplete="off">
+        </label>
+        <button type="submit">Get estimate</button>
+      </div>
+    </form>
+    <div class="result" role="status" aria-live="polite">
+      <div id="estimate-label" class="caption"></div>
+      <div id="estimate-value" class="value"></div>
+      <div id="estimate-as-of" class="caption"></div>
+      <div id="estimate-error" class="message error"></div>
+    </div>
+    <p class="note">The number is approximate, with a standard error of about 0.81% (estimated).
+      It counts distinct users with an event in the last 14 days, and it can be up to one
+      cache TTL old, so a new event may not show at once.</p>
+  </section>
 
-<section>
-  <h2>Get an estimate</h2>
-  <form id="estimate-form">
-    <label>Segment
-      <input id="estimate-segment" required maxlength="64" pattern="[a-zA-Z0-9_\-]+" autocomplete="off">
-    </label>
-    <button type="submit">Get estimate</button>
-  </form>
-  <output id="estimate-result" for="estimate-segment">
-    <div id="estimate-value" class="value"></div>
-    <div id="estimate-as-of"></div>
-    <div id="estimate-error" class="error"></div>
-  </output>
-  <p class="note">The number is approximate, with a standard error of about 0.81% (estimated).
-    It counts distinct users with an event in the last 14 days, and it can be up to one
-    cache TTL old, so a new event may not show at once.</p>
-</section>
+  <section aria-labelledby="event-title">
+    <h2 id="event-title">Send a test event</h2>
+    <form id="event-form">
+      <label>User ID
+        <input id="event-user" required maxlength="128" autocomplete="off">
+      </label>
+      <label>Segment
+        <input id="event-segment" required maxlength="64" pattern="[a-zA-Z0-9_\-]+" autocomplete="off">
+      </label>
+      <button class="secondary" type="submit">Send event</button>
+    </form>
+    <div id="event-result" class="message" role="status" aria-live="polite"></div>
+  </section>
+</main>
 
 <script>
   "use strict";
 
   const eventResult = document.getElementById("event-result");
+  const estimateLabel = document.getElementById("estimate-label");
   const estimateValue = document.getElementById("estimate-value");
   const estimateAsOf = document.getElementById("estimate-as-of");
   const estimateError = document.getElementById("estimate-error");
@@ -78,8 +173,8 @@
       user_id: document.getElementById("event-user").value,
       segment: document.getElementById("event-segment").value,
     };
-    eventResult.className = "";
-    eventResult.textContent = "Submitting...";
+    eventResult.className = "message";
+    eventResult.textContent = "Sending...";
     try {
       const response = await fetch("/v1/events", {
         method: "POST",
@@ -87,13 +182,14 @@
         body: JSON.stringify({ events: [pair] }),
       });
       if (!response.ok) {
-        eventResult.className = "error";
+        eventResult.className = "message error";
         eventResult.textContent = await errorMessage(response);
         return;
       }
+      eventResult.className = "message success";
       eventResult.textContent = "Accepted: " + pair.user_id + " in " + pair.segment;
     } catch {
-      eventResult.className = "error";
+      eventResult.className = "message error";
       eventResult.textContent = "The service cannot be reached.";
     }
   });
@@ -101,6 +197,7 @@
   document.getElementById("estimate-form").addEventListener("submit", async (event) => {
     event.preventDefault();
     const segment = document.getElementById("estimate-segment").value;
+    estimateLabel.textContent = "";
     estimateValue.textContent = "";
     estimateAsOf.textContent = "";
     estimateError.textContent = "";
@@ -111,7 +208,8 @@
         return;
       }
       const body = await response.json();
-      estimateValue.textContent = "About " + body.estimate.toLocaleString("en-US");
+      estimateLabel.textContent = "About this many users in " + body.segment;
+      estimateValue.textContent = body.estimate.toLocaleString("en-US");
       estimateAsOf.textContent = "As of " + body.as_of;
     } catch {
       estimateError.textContent = "The service cannot be reached.";
