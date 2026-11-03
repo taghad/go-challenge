@@ -810,9 +810,9 @@ imported packages. One remains at module level: GO-2026-5932, for the unmaintain
 
 ### Limits of these results
 
-- **Memory limit.** A fully dense segment at 1h uses 4.85 MB. So `3gb` holds about 620 fully
-  dense segments at 1h, taken as 3 x 10^9 bytes `[calculated]`. Redis reads `3gb` as
-  3,221,225,472 bytes `[M]`, which gives about 664 `[calculated]`. Beyond that, writes return
+- **Memory limit.** A fully dense segment at 1h uses 4.85 MB. Redis reads `3gb` as
+  3,221,225,472 bytes `[M]`, so it holds about 664 fully dense segments at 1h
+  `[calculated]`. Beyond that, writes return
   `503`, and `noeviction` keeps the data. The challenge asks for hundreds of segments, and
   sparse keys use less, but nothing limits the number of segment names.
 - **Throughput is not production capacity.** It comes from one laptop, with the simulator in

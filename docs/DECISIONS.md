@@ -26,7 +26,7 @@ one laptop, `[calculated]` is computed from measured values, and `[E]` is an est
   limit of 1%, against 0.22% at 1h `[M]`. Rollups with `PFMERGE`, because they add memory and a
   background job, and nothing measured needs them.
 - **Cost:** six times the memory of 6h (2.43 GB against 405.2 MB) and about five times the p99
-  (6.8 ms against 1.4 ms) `[M]`. `3gb` holds about 620 fully dense segments `[calculated]`.
+  (6.8 ms against 1.4 ms) `[M]`. `3gb` holds about 664 fully dense segments `[calculated]`.
   Changing the bucket size later undercounts for 14 days, because the old keys are no longer read.
 
 ## An undercount over counting expired users
