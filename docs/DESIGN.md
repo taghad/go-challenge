@@ -109,13 +109,17 @@ using the rule below.
 | 1h | 336 | 2.06 GB | About 11 ms | 0.3% of the window |
 
 **Decision rule, fixed before measuring.** Keep 6h unless all of these hold, in
-which case use 1h. The thresholds are judgment calls, not measurements.
+which case use 1h. The thresholds are judgment calls, not measurements, and their
+status is recorded under [thresholds](#thresholds).
 
-1. The worst 6h undercount under uniform traffic exceeds 1%.
+1. The worst 6h undercount in the decision scenario exceeds 1%. The scenario is
+   defined in the [traffic model](#traffic-model).
 2. Uncached estimate p99 at 1h is at most 20 ms.
 3. Redis memory at 1h for 500 dense segments is at most 2.5 GB.
 4. Estimate recomputation at 1h uses at most 20% of Redis time when all 500
    segments are queried continuously.
+
+Spiky traffic results are reported as well, but they are not part of this rule.
 
 **Changing the bucket size on existing data is not safe.** The bucket size is
 part of the key, so old keys are never misread, but they are also no longer
@@ -342,11 +346,45 @@ it isolates boundary error from HLL error.
 
 - **Ground truth:** distinct users with an event in the exact last 14 days.
 - **Compared with:** distinct users in the bucket window.
-- **Bucket sizes:** 1h and 6h.
-- **Traffic profiles:** uniform, and spiky with a large share of users arriving
-  in one short slice. Each runs with single-visit and returning users.
-- **Sampling:** throughout several bucket cycles, including right after boundaries.
-- **Reported:** mean and maximum undercount, with fixed and recorded seeds.
+- **Undercount:** `(truth - window count) / truth`, which is never negative.
+- **Reported:** mean and maximum undercount for every run in the matrix below,
+  including spiky traffic, along with the seeds and the realized return share.
+
+#### Traffic model
+
+The model is fixed before any measurement. ES has no real USS data, so every
+parameter is an assumption `[E]`. If real USS data becomes available, it should
+replace these values.
+
+| Parameter | Value `[E]` |
+|---|---|
+| Distinct users | 1,000,000 |
+| Simulated period | 56 days: 42 days of warm-up, then 14 days of sampling |
+| Sampling | Every 15 minutes, which includes the instant of each 1h and 6h boundary |
+| First event, uniform profile | Uniformly random across the simulated period |
+| First event, spiky profile | As uniform, except 30% of users have their first event in one 6h slice |
+| Spike position | Aligned to a 6h bucket, on day 28, so that it leaves the window during sampling |
+| Return share `r` | 0%, 50%, and 90% |
+| Single-visit user, share `1 - r` | One event only |
+| Returning user, share `r` | 1 to 8 further events (uniform), with exponential gaps of mean 3 days |
+| Events after day 56 | Dropped |
+| Seeds | 1, 2, and 3 |
+
+`r` is the share of users assigned to make at least one return visit. Because
+gaps are random and events after day 56 are dropped, a few of those users do not
+return within 14 days, so the experiment also reports the realized share.
+
+**Run matrix:** both profiles, all three return shares, and both bucket sizes,
+for each seed. That is 36 runs.
+
+**Decision scenario:** uniform profile, `r = 50%`, 6h buckets, taking the maximum
+undercount across seeds. Every other run is reported, but only this one is used
+by rule 1 of the [decision rule](#bucket-size).
+
+**Expected result, not a measurement** `[E]`: under uniform arrivals, the maximum
+6h undercount is about 1.8% at `r = 0%` and about 1.2% at `r = 50%`, right after a
+boundary. The time-averaged undercount is about half of that. If measurements
+agree, rule 1 will hold, and the choice will depend on rules 2 to 4.
 
 ### 1h and 6h benchmark
 
@@ -373,6 +411,22 @@ events and latency percentiles.
 
 Results describe the test machine only, and the simulator shares that machine
 with ES and Redis. They are not a production capacity prediction.
+
+### Thresholds
+
+These values decide outcomes, so they must not change after results are seen. A
+threshold is marked as the project owner's decision only after the owner confirms
+it. Steps 19 to 21 do not start until all of them are confirmed.
+
+| Threshold | Value | Status |
+|---|---:|---|
+| Rule 1: worst 6h undercount, decision scenario | above 1% | Proposed, awaiting owner confirmation |
+| Rule 2: uncached estimate p99 at 1h | at most 20 ms | Proposed, awaiting owner confirmation |
+| Rule 3: Redis memory at 1h, 500 dense segments | at most 2.5 GB | Proposed, awaiting owner confirmation |
+| Rule 4: recomputation share of Redis time at 1h | at most 20% | Proposed, awaiting owner confirmation |
+| Saturation: accepted share of offered events | below 99% | Proposed, awaiting owner confirmation |
+| Saturation: ingestion p99 | above 500 ms | Proposed, awaiting owner confirmation |
+| After a spike: estimate against acknowledged users | within 2.43% | Proposed, awaiting owner confirmation |
 
 ## Implementation plan
 
@@ -416,8 +470,9 @@ used, and the matching `[E]` values above are replaced.
 |---|---|
 | Test machine | Not measured |
 | HLL error at 1k, 100k, 1M | Not measured |
-| Boundary undercount, uniform, 1h and 6h | Not measured |
-| Boundary undercount, spiky, 1h and 6h | Not measured |
+| Boundary undercount, uniform, 1h and 6h, each return share | Not measured |
+| Boundary undercount, spiky, 1h and 6h, each return share | Not measured |
+| Realized return share | Not measured |
 | Uncached estimate p50 and p99, 1h and 6h | Not measured |
 | Redis memory, 500 dense segments, 1h and 6h | Not measured |
 | Saturation point | Not measured |
