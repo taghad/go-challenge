@@ -21,7 +21,8 @@ services:
       retries: 15
 
   # Used only by the test service. It has no volume or AOF, so test data never
-  # mixes with the data of the redis service.
+  # mixes with the data of the redis service. The tmpfs replaces the anonymous
+  # volume that the image would otherwise create for /data.
   redis-test:
     image: redis:8.2.3
     profiles: ["test"]
@@ -29,6 +30,8 @@ services:
       - redis-server
       - --appendonly
       - "no"
+    tmpfs:
+      - /data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 2s
@@ -40,7 +43,8 @@ services:
     image: golang:1.27.3
     profiles: ["test"]
     working_dir: /src
-    command: ["go", "test", "-race", "./..."]
+    # -p 1 runs one package at a time, because a test can pause all of redis-test.
+    command: ["go", "test", "-p", "1", "-race", "./..."]
     environment:
       REDIS_ADDR: redis-test:6379
     volumes:
