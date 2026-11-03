@@ -3,6 +3,7 @@ package httpapi
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"testing"
@@ -10,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/taghad/go-challenge/internal/estimator"
+	"github.com/taghad/go-challenge/internal/web"
 )
 
 type panicStore struct{ fakeStore }
@@ -32,6 +34,25 @@ func TestPanicReturns500AndFreesIngestionSlot(t *testing.T) {
 		if recorder.Code != http.StatusInternalServerError {
 			t.Fatalf("status = %d, want %d", recorder.Code, http.StatusInternalServerError)
 		}
+	}
+}
+
+func TestIndexServesFrontendWithoutStore(t *testing.T) {
+	store := &fakeStore{err: errors.New("store down")}
+
+	recorder := serve(newTestRouter(t, store), get("/"))
+
+	if recorder.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d", recorder.Code, http.StatusOK)
+	}
+	if got := recorder.Header().Get("Content-Type"); got != "text/html; charset=utf-8" {
+		t.Errorf("Content-Type = %q", got)
+	}
+	if !bytes.Equal(recorder.Body.Bytes(), web.Index) {
+		t.Error("body is not the embedded page")
+	}
+	if store.pings != 0 {
+		t.Errorf("store pings = %d, want 0", store.pings)
 	}
 }
 

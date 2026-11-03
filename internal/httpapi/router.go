@@ -2,9 +2,12 @@
 package httpapi
 
 import (
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 
 	"github.com/taghad/go-challenge/internal/estimator"
+	"github.com/taghad/go-challenge/internal/web"
 )
 
 // Config holds the limits of the HTTP layer.
@@ -20,6 +23,11 @@ type api struct {
 	config  Config
 }
 
+// index handles GET /, which serves the frontend.
+func index(c *gin.Context) {
+	c.Data(http.StatusOK, "text/html; charset=utf-8", web.Index)
+}
+
 // NewRouter returns the HTTP handler of ES. It has Recovery, so a panic in one request
 // returns 500 instead of ending the process. It has no request Logger, because a line
 // per request is a cost on the ingestion path.
@@ -31,5 +39,6 @@ func NewRouter(service *estimator.Service, config Config) *gin.Engine {
 	router.GET("/v1/segments/:segment/estimate", a.estimate)
 	router.GET("/healthz", healthz)
 	router.GET("/readyz", a.readyz)
+	router.GET("/", index)
 	return router
 }

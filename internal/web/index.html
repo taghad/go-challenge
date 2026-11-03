@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Estimation Service</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: system-ui, sans-serif; max-width: 32rem; margin: 2rem auto; padding: 0 1rem; line-height: 1.5; }
+  form { display: grid; gap: 0.75rem; margin: 1rem 0; }
+  label { display: grid; gap: 0.25rem; }
+  input, button { font: inherit; padding: 0.4rem 0.6rem; }
+  button { justify-self: start; }
+  output { display: block; min-height: 1.5rem; overflow-wrap: anywhere; }
+  .error { color: #c62828; }
+  @media (prefers-color-scheme: dark) { .error { color: #ef9a9a; } }
+  .value { font-size: 2rem; font-weight: 600; }
+  .note { font-size: 0.9rem; opacity: 0.75; }
+</style>
+</head>
+<body>
+<h1>Estimation Service</h1>
+
+<section>
+  <h2>Submit an event</h2>
+  <form id="event-form">
+    <label>User ID
+      <input id="event-user" required maxlength="128" autocomplete="off">
+    </label>
+    <label>Segment
+      <input id="event-segment" required maxlength="64" pattern="[a-zA-Z0-9_\-]+" autocomplete="off">
+    </label>
+    <button type="submit">Submit</button>
+  </form>
+  <output id="event-result" for="event-user event-segment"></output>
+</section>
+
+<section>
+  <h2>Get an estimate</h2>
+  <form id="estimate-form">
+    <label>Segment
+      <input id="estimate-segment" required maxlength="64" pattern="[a-zA-Z0-9_\-]+" autocomplete="off">
+    </label>
+    <button type="submit">Get estimate</button>
+  </form>
+  <output id="estimate-result" for="estimate-segment">
+    <div id="estimate-value" class="value"></div>
+    <div id="estimate-as-of"></div>
+    <div id="estimate-error" class="error"></div>
+  </output>
+  <p class="note">The number is approximate, with a standard error of about 0.81% (estimated).
+    It counts distinct users with an event in the last 14 days, and it can be up to one
+    cache TTL old, so a new event may not show at once.</p>
+</section>
+
+<script>
+  "use strict";
+
+  const eventResult = document.getElementById("event-result");
+  const estimateValue = document.getElementById("estimate-value");
+  const estimateAsOf = document.getElementById("estimate-as-of");
+  const estimateError = document.getElementById("estimate-error");
+
+  // Returns the message of an error response. Output is always rendered with
+  // textContent, so nothing a user typed or the server returned can become markup.
+  async function errorMessage(response) {
+    try {
+      const body = await response.json();
+      return body.error.message;
+    } catch {
+      return "request failed with status " + response.status;
+    }
+  }
+
+  document.getElementById("event-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const pair = {
+      user_id: document.getElementById("event-user").value,
+      segment: document.getElementById("event-segment").value,
+    };
+    eventResult.className = "";
+    eventResult.textContent = "Submitting...";
+    try {
+      const response = await fetch("/v1/events", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ events: [pair] }),
+      });
+      if (!response.ok) {
+        eventResult.className = "error";
+        eventResult.textContent = await errorMessage(response);
+        return;
+      }
+      eventResult.textContent = "Accepted: " + pair.user_id + " in " + pair.segment;
+    } catch {
+      eventResult.className = "error";
+      eventResult.textContent = "The service cannot be reached.";
+    }
+  });
+
+  document.getElementById("estimate-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const segment = document.getElementById("estimate-segment").value;
+    estimateValue.textContent = "";
+    estimateAsOf.textContent = "";
+    estimateError.textContent = "";
+    try {
+      const response = await fetch("/v1/segments/" + encodeURIComponent(segment) + "/estimate");
+      if (!response.ok) {
+        estimateError.textContent = await errorMessage(response);
+        return;
+      }
+      const body = await response.json();
+      estimateValue.textContent = "About " + body.estimate.toLocaleString("en-US");
+      estimateAsOf.textContent = "As of " + body.as_of;
+    } catch {
+      estimateError.textContent = "The service cannot be reached.";
+    }
+  });
+</script>
+</body>
+</html>

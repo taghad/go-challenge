@@ -300,6 +300,10 @@ One `index.html` with plain JavaScript, embedded in the binary and served from
 and get an estimate. It shows `as_of` and states that the number is approximate.
 A number can be up to one cache TTL old, which is why local compose uses `5s`.
 
+All output is rendered with `textContent`, so nothing a user typed or the server
+returned can become markup. The segment is encoded with `encodeURIComponent` in the
+URL path. Serving the page does not touch Redis, so it loads during a Redis outage.
+
 ## Failure modes
 
 | Failure | Behavior |
