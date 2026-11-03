@@ -28,7 +28,7 @@ services:
       - es
 
   redis:
-    image: redis:8.2.3
+    image: redis:8.2.11
     command:
       - redis-server
       - --appendonly
@@ -52,7 +52,7 @@ services:
   # mixes with the data of the redis service. The tmpfs replaces the anonymous
   # volume that the image would otherwise create for /data.
   redis-test:
-    image: redis:8.2.3
+    image: redis:8.2.11
     profiles: ["test"]
     command:
       - redis-server
