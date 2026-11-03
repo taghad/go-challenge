@@ -63,7 +63,8 @@ segment has one HLL per bucket.
   keeps all of a segment's keys in one Redis Cluster slot, so a multi-key
   `PFCOUNT` keeps working if Redis is later clustered.
 - **Write:** `PFADD` into the current bucket and `EXPIREAT` in one `TxPipeline`.
-  The expiry is absolute, so repeated writes set the same value.
+  The expiry is absolute, so repeated writes set the same value. The value is
+  given under [expiry guarantee](#expiry-guarantee).
 - **Read:** `PFCOUNT` over the current bucket and the previous ones, for a total
   of `14 days / bucket size` buckets.
 
@@ -79,6 +80,16 @@ when the boundary passed, bounded by the operation deadline.
 With bucket size `S`, the window is `N = 14d / S` buckets including the current
 one. An event in the oldest bucket is at most `(N - 1) * S` plus the time elapsed
 in the current bucket, which is less than 14 days.
+
+**Expiry value:** `EXPIREAT` is the bucket start plus 14 days, in Unix seconds.
+For bucket `1794096000`, that is `1794096000 + 1209600 = 1795305600`.
+
+A bucket is last read just before `start + N * S`, which equals `start + 14 days`,
+so this is the earliest value that never removes a key still in the window, and
+at most `N` buckets of a segment are live at once. Redis applies the expiry with
+its own clock. If that clock runs ahead of ES, a key can expire early by the skew,
+which is an undercount limited to the skew. If it runs behind, the key only uses
+memory for longer, because the read window has already stopped counting it.
 
 ### Boundary error
 
@@ -297,6 +308,39 @@ limit is found by the spike test.
 
 ES is stateless, so it scales by adding instances. Redis can move to Cluster
 without changing the key format. Clustering is not implemented here.
+
+**Limit: a hot segment stays on one shard.** The `{sports}` hash tag puts all of
+a segment's keys in one slot. Clustering spreads different segments across shards,
+but it cannot spread the load of one hot segment.
+
+**Next step, not implemented: a fixed split by user.** Each user goes to one of
+`K` sub-keys by `hash(user_id) mod K`, for example `es:{sports:3}:21600:1794096000`.
+The estimate is the sum of the `K` counts.
+
+- The sum is valid only because the sub-keys are disjoint, so no user is counted
+  twice. A single `PFCOUNT` could not span them anyway, because they sit in
+  different slots.
+- `K` must stay fixed. Changing it moves users to other sub-keys, so the sub-keys
+  are no longer disjoint and users are double counted for up to 14 days.
+- The split hash must be independent of the hash HLL uses internally. Otherwise
+  each sub-key sees a skewed share of its registers and accuracy suffers.
+- Memory grows by a factor of `K`. With an even split, standard error falls to
+  about `0.81% / sqrt(K)` `[E]`.
+
+### Rollups
+
+**Fallback, not implemented:** if `PFCOUNT` over many buckets proves too slow,
+sealed buckets can be merged with `PFMERGE` into coarser rollup keys, and a read
+then uses a few rollups plus the recent buckets.
+
+- **An HLL cannot subtract.** A rollup still counts its oldest bucket's users
+  until the whole rollup is dropped, so it must leave the read window when its
+  oldest bucket would expire, or the expiry guarantee breaks.
+- The buckets a dropped rollup covered must still be read, so they have to be
+  kept. Rollups therefore add memory and a background merge job to save read time.
+- No threshold triggers this option. Rules 2 and 4 of the
+  [decision rule](#bucket-size) only choose between 6h and 1h, so using rollups
+  would be a separate owner decision based on the measured latency.
 
 ## Project layout
 
