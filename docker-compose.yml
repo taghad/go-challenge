@@ -17,6 +17,16 @@ services:
       redis:
         condition: service_healthy
 
+  # Runs only on request, in its own container, and reaches ES through the compose
+  # network: docker compose run --rm uss -rate 1000 -duration 30s
+  uss:
+    build:
+      context: .
+      target: uss
+    profiles: ["tools"]
+    depends_on:
+      - es
+
   redis:
     image: redis:8.2.3
     command:

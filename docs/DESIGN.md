@@ -30,7 +30,7 @@ section is filled in.
 | Does a repeat event renew the two weeks? | Yes | Approved. The estimate is the number of distinct users with an event in the last 14 days. |
 | Is an approximate count acceptable? | Yes | Approved. About 0.81% standard error `[E]`. |
 | Which time does an event use? | Time of receipt at ES | USS sends no timestamp. A retried event renews from the retry time. |
-| Does USS retry after a `503`? | Assumed yes | If it does not, rejected events are lost and a durable queue is needed. |
+| Does USS retry after a `503`? | Assumed yes, at most 3 times `[E]` in `cmd/uss` | If it does not, rejected events are lost and a durable queue is needed. |
 | Is authentication in scope? | No | ES is assumed to run on an internal network. |
 | What does an unknown segment return? | `200` with `0` | It cannot be told apart from a segment with no recent events. |
 | What happens to a batch with one invalid event? | The whole batch gets `400` | Partial acceptance makes retries harder to reason about. |
@@ -397,7 +397,7 @@ then uses a few rollups plus the recent buckets.
 │   ├── server/
 │   │   ├── config.go        # configuration from the environment
 │   │   └── main.go          # wiring, graceful shutdown
-│   └── uss/main.go          # USS traffic simulator
+│   └── uss/                 # USS traffic simulator
 ├── internal/
 │   ├── estimator/
 │   │   ├── window.go        # pure bucket calculation
@@ -495,24 +495,88 @@ test. Ingestion throughput comes from the spike test.
 
 ### Spike test
 
-`cmd/uss` simulates USS. It takes a rate, batch size, user count, segment count,
-and traffic profile. It honors `Retry-After` and reports accepted and rejected
-events and latency percentiles.
+`cmd/uss` simulates USS and is described [below](#uss-simulator).
 
-- **Ramp:** the offered rate doubles at each step until saturation.
-- **Saturation point:** the first step where accepted events fall below 99% of
-  offered events, or ingestion p99 exceeds 500 ms `[E]`.
+- **Ramp:** the offered rate doubles at each step until saturation. Each step is one
+  `steady` run of `cmd/uss`.
+- **Saturation point:** the first step where the first-attempt acceptance falls below
+  99% of offered events, or ingestion p99 exceeds 500 ms `[E]`. Retries do not count
+  here, because enough retries could hide an overload. Final acceptance is reported
+  separately.
 - **Reported:** highest sustained rate, `503` rate, Redis and ES resource use.
 - **Boundary burst:** segments are queried continuously across a bucket boundary,
   when all cache entries become invalid at once. This test runs in process with
   real Redis and an injected clock, so it does not wait for a real boundary. The
   estimate `503` rate and latency percentiles are reported.
-- **After the spike:** a segment's estimate is compared with the distinct users
-  whose events were acknowledged. It should be within 3 standard errors, which
-  is about 2.43% `[E]`.
+- **After the spike:** a timed-out event may have been written, so the true number of
+  users of a segment lies between its distinct acknowledged users and its distinct
+  attempted users. The estimate must lie in that range, widened by 3 standard errors,
+  which is about 2.43% `[E]`:
+  `acknowledged * (1 - 0.0243) <= estimate <= attempted * (1 + 0.0243)`.
 
 Results describe the test machine only, and the simulator shares that machine
 with ES and Redis. They are not a production capacity prediction.
+
+### USS simulator
+
+`cmd/uss` runs in its own container, under the compose profile `tools`, and reaches ES
+through the compose network:
+`docker compose run --rm uss -rate 1000 -duration 30s -profile steady`.
+
+- **Open loop.** The schedule is computed before the run, and each batch starts at its
+  scheduled time whether or not earlier ones were answered. A slow ES therefore cannot
+  slow the offered rate. Connections are not limited, for the same reason.
+- **Fixed seed.** The seed defaults to 1. Each batch has a generator seeded by its
+  index, so its events and jitter do not depend on timing. Users and segments are drawn
+  uniformly.
+- **Profiles.** `steady` is a constant rate. `burst` multiplies the rate during a short
+  window. The `uniform` and `spiky` profiles belong only to the
+  [boundary error experiment](#traffic-model), which simulates 56 days and cannot run
+  in real time.
+
+| Flag | Default `[E]` | Purpose |
+|---|---:|---|
+| `-url` | `http://es:8080` | ES through the compose network |
+| `-rate` | 1000 | Offered events per second |
+| `-duration` | 30 s | Length of the schedule |
+| `-batch` | 500 | Events per request |
+| `-users` | 1,000,000 | User IDs to draw from |
+| `-segments` | 500 | Segments to draw from |
+| `-segment-prefix` | `uss-` | Keeps the segments of one run apart from another |
+| `-seed` | 1 | Seed of the events and the jitter |
+| `-profile` | `steady` | `steady` or `burst` |
+| `-burst-multiplier` | 10 | `burst`: rate multiplier in the window |
+| `-burst-start` | 10 s | `burst`: start of the window |
+| `-burst-duration` | 5 s | `burst`: length of the window |
+| `-timeout` | 2 s | Timeout of one attempt |
+| `-max-retries` | 3 | Retries per batch after the first attempt |
+| `-retry-jitter` | 1 s | Upper limit on the random time added to `Retry-After` |
+
+**Retries.** A `503`, a timeout, and a network error are each counted separately and
+retried, at most 3 times `[E]`, with the same body. A batch that uses them up is
+abandoned. Any other response, such as a `400`, is not retried. The wait is
+`Retry-After` plus a random time below `-retry-jitter`, so it is never shorter than ES
+asked for. A timeout or a network error has no `Retry-After`, so it uses 1 s `[E]`,
+the value ES sends.
+
+**Report.** One JSON document on standard output, measured on the machine that ran it:
+
+- The offered rate from the schedule, the achieved rate of first attempts, and the send
+  lag, which is how late batches left. A growing lag means the simulator itself is
+  saturated, and the results of that run are not valid.
+- First attempts and retries separately: attempts, events, acknowledged events, `503`s,
+  timeouts, network errors, other errors, acceptance, and latency percentiles.
+- Final results per batch: acknowledged, abandoned and failed events, final acceptance,
+  and the latency to the acknowledgement.
+- Distinct acknowledged users and distinct attempted users, in total and per segment.
+
+**Latency runs from the scheduled send time**, so a late send counts as latency and is
+not hidden. A retry is scheduled at the end of its wait, so its latency excludes that
+wait. The final latency runs from the schedule of the batch and includes every wait.
+
+Tracking uses one bit per user, for acknowledged and for attempted, in total and per
+segment. That is about 125 MB `[E]` at 1,000,000 users and 500 segments, and it grows
+with `users * segments`.
 
 ### Thresholds
 
@@ -526,9 +590,9 @@ because no real USS data exists to derive them from.
 | Rule 2: uncached estimate p99 at 1h | at most 20 ms | Owner decision, assumption |
 | Rule 3: Redis memory at 1h, 500 dense segments | at most 2.5 GB | Owner decision, assumption |
 | Rule 4: recomputation share of Redis time at 1h | at most 20% | Owner decision, assumption |
-| Saturation: accepted share of offered events | below 99% | Owner decision, assumption |
+| Saturation: first-attempt acceptance of offered events | below 99% | Owner decision, assumption |
 | Saturation: ingestion p99 | above 500 ms | Owner decision, assumption |
-| After a spike: estimate against acknowledged users | within 2.43% | Owner decision, assumption |
+| After a spike: estimate between acknowledged and attempted users | margin of 2.43% | Owner decision, assumption |
 
 ## Implementation plan
 
