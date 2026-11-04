@@ -4,6 +4,12 @@ Estimation Service (ES) receives `(user_id, segment)` pairs from the User Segmen
 (USS) and estimates how many distinct users each segment had in the last 14 days. The count is
 approximate, because it uses Redis HyperLogLog (HLL).
 
+![Ramp: first-attempt acceptance and p99 by offered rate](docs/report/ramp.svg)
+
+Ramp on one laptop with repeated users; not production capacity.
+
+[docs/TEST_REPORT.md](docs/TEST_REPORT.md)
+
 ## Quick start
 
 Only Docker is needed.
