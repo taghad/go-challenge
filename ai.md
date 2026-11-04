@@ -3,42 +3,24 @@
 **How this file was written.** The challenge asks that this file be written by the candidate. I
 wrote my notes in Persian. GPT translated parts of them into English. The Claude consultation
 session extracted the prompts and usage from the session history, listed facts for me, and applied
-the final edit to this file at my request. Treat this file as AI-assisted.
+the final edit and formatting to this file at my request. Treat this file as AI-assisted.
+
+**Contents**
+
+- [1. AI Tools and Models](#1-ai-tools-and-models)
+- [2. Stages of Development](#2-stages-of-development)
+- [3. Prompts](#3-prompts)
+- [4. Usage Tracking and Cost Management](#4-usage-tracking-and-cost-management)
 
 ## 1. AI Tools and Models
 
-  -----------------------------------------------------------------------
-  Tool / Product    Model             Purpose           Frequency
-  ----------------- ----------------- ----------------- -----------------
-  Claude Code --    Claude Opus 5.5   Reviewing         Throughout
-  Consultation                        proposals,        development
-  Sessions                            inspecting the    
-                                      repository,       
-                                      technical         
-                                      decisions, and    
-                                      reviewing         
-                                      iterations        
-
-  Claude Code --    Claude Opus 5.5   Design, coding,   Most of the work
-  Project Sessions                    testing, Docker,  
-                                      measurements, and 
-                                      documentation     
-
-  ChatGPT           GPT-6             Initial planning, Several times,
-                                      HLL evaluation,   mostly at the
-                                      and suggesting    beginning and
-                                      prompts           occasionally for
-                                                        reviews
-
-  ChatGPT           GPT-6             Translating my    At the end
-                                      Persian notes for
-                                      this file
-
-  Claude Code --    Claude Opus 5.5   Extracting prompts At the end
-  Consultation                        and usage, and the
-  Sessions                            final edit of this
-                                      file
-  -----------------------------------------------------------------------
+| Tool / Product | Model | Purpose | Frequency |
+|---|---|---|---|
+| Claude Code -- Consultation Sessions | Claude Opus 5.5 | Reviewing proposals, inspecting the repository, technical decisions, and reviewing iterations | Throughout development |
+| Claude Code -- Project Sessions | Claude Opus 5.5 | Design, coding, testing, Docker, measurements, and documentation | Most of the work |
+| ChatGPT | GPT-6 | Initial planning, HLL evaluation, and suggesting prompts | Several times, mostly at the beginning and occasionally for reviews |
+| ChatGPT | GPT-6 | Translating my Persian notes for this file | At the end |
+| Claude Code -- Consultation Sessions | Claude Opus 5.5 | Extracting prompts and usage, and the final edit of this file | At the end |
 
 ## 2. Stages of Development
 
@@ -208,88 +190,28 @@ The following table summarizes the 19 prompts sent in the Claude Code
 project session. Usage figures were extracted from the session's JSONL
 history files. "Input" includes input tokens and cache writes.
 
-  ----------------------------------------------------------------------------------------------
-              \# Prompt          API calls / Result           Evaluation        Fix
-                                 Input /                      (evidence)        
-                                 Cache read                                     
-                                 / Output                                       
-  -------------- --------------- ----------- ---------------- ----------------- ----------------
-               1 Architecture    5 / 41k /   HLL design with  Cache             Prompt 2
-                 proposal        340k / 21k  6h buckets       inconsistency and 
-                                                              time-percentage   
-                                                              error found       
-
-               2 Approve design  7 / 26k /   `DESIGN.md`      Incorrect author  Prompt 3
-                 and Step 1      713k / 19k                   identified        
-
-               3 Step 2 and      9 / 26k /   Traffic model,   36 runs were      Prompt 5
-                 author          1.15M / 14k `CLAUDE.md`, and excessive         
-                 correction                  `go.mod`                           
-
-               4 `/cont`         0 / 0 / 0 / Failed; typo and ---               Run `/context`
-                                 0           incomplete                         again
-                                             command                            
-
-               5 Confirm         5 / 17k /   8 measurement    No issue found    Not needed
-                 thresholds      739k / 7k   cases                              
-
-               6 Step 3          10 / 48k /  Compose with     Missing           Prompt 11
-                                 868k / 8k   Redis and tests  `maxmemory`,      
-                                                              shared Redis, and 
-                                                              `-race`           
-
-               7 Complete        9 / 23k /   Bucket logic     `-race` run; some Prompt 11
-                 document and    1.03M / 19k                  fixes had not     
-                 Step 4                                       been applied      
-
-               8 Step 5          6 / 22k /   Validation       Decisions made    Approval and 413
-                                 831k / 11k                   without asking    
-
-               9 Step 6          6 / 19k /   Store and        Checked against   Prompt 11
-                                 941k / 16k  Service          repository        
-
-              10 Step 7          11 / 84k /  Cache and        `-race` and       Limit test fixed
-                                 1.18M / 43k estimate limit   mutation check    in the same
-                                                                                session
-
-              11 Fixes and Steps 11 / 53k /  Redis store      go-redis options  Prompt 12
-                 8--9            1.79M / 40k                  verified in       
-                                                              source            
-
-              12 Steps 10--13    8 / 48k /   API and limiter  Six choices made  Approved with a
-                                 1.70M / 38k                  without asking    reminder
-
-              13 Steps 14--17    3 / 41k /   Stopped with 4   Timeout issue     Prompt 14
-                                 202k / 14k  questions        identified        
-
-              14 Answers to      26 / 112k / Server,          Clean checkout    Prompt 15
-                 questions       4.12M / 74k frontend,        and XSS test      
-                                             Docker, and USS                    
-
-              15 UI and method   12 / 48k /  UI and stopped   Missing           Prompt 16
-                 decisions       2.86M / 32k for a decision   concurrent writes 
-                                                              identified        
-
-              16 Redis and Steps 18 / 110k / Measurements     5 vulnerabilities Prompt 17
-                 18--21          5.66M / 73k                  and OOM during    
-                                                              burst             
-
-              17 Dependencies,   25 / 154k / Results and      Test report and   Prompt 18
-                 1h, and         3.73M / 46k `DECISIONS.md`   620 figure had    
-                 documentation                                issues            
-
-              18 Final prompt    27 / 119k / 1h ramp, report, Two of its own    Repeat
-                                 7.46M / 80k and merge        mistakes were     clean-checkout
-                                                              reported          run
-
-              19 Rewrite README  5 / 15k /   Commit `9f82f0e` Compared with    ---
-                                 1.67M / 11k                  the test report  
-
-       **Total**                 **203 /                                        
-                                 1.01M /                                        
-                                 36.98M /                                       
-                                 564k**                                         
-  ----------------------------------------------------------------------------------------------
+| \# | Prompt | API calls / Input / Cache read / Output | Result | Evaluation (evidence) | Fix |
+|---:|---|---|---|---|---|
+| 1 | Architecture proposal | 5 / 41k / 340k / 21k | HLL design with 6h buckets | Cache inconsistency and time-percentage error found | Prompt 2 |
+| 2 | Approve design and Step 1 | 7 / 26k / 713k / 19k | `DESIGN.md` | Incorrect author identified | Prompt 3 |
+| 3 | Step 2 and author correction | 9 / 26k / 1.15M / 14k | Traffic model, `CLAUDE.md`, and `go.mod` | 36 runs were excessive | Prompt 5 |
+| 4 | `/cont` | 0 / 0 / 0 / 0 | Failed; typo and incomplete command | --- | Run `/context` again |
+| 5 | Confirm thresholds | 5 / 17k / 739k / 7k | 8 measurement cases | No issue found | Not needed |
+| 6 | Step 3 | 10 / 48k / 868k / 8k | Compose with Redis and tests | Missing `maxmemory`, shared Redis, and `-race` | Prompt 11 |
+| 7 | Complete document and Step 4 | 9 / 23k / 1.03M / 19k | Bucket logic | `-race` run; some fixes had not been applied | Prompt 11 |
+| 8 | Step 5 | 6 / 22k / 831k / 11k | Validation | Decisions made without asking | Approval and 413 |
+| 9 | Step 6 | 6 / 19k / 941k / 16k | Store and Service | Checked against repository | Prompt 11 |
+| 10 | Step 7 | 11 / 84k / 1.18M / 43k | Cache and estimate limit | `-race` and mutation check | Limit test fixed in the same session |
+| 11 | Fixes and Steps 8--9 | 11 / 53k / 1.79M / 40k | Redis store | go-redis options verified in source | Prompt 12 |
+| 12 | Steps 10--13 | 8 / 48k / 1.70M / 38k | API and limiter | Six choices made without asking | Approved with a reminder |
+| 13 | Steps 14--17 | 3 / 41k / 202k / 14k | Stopped with 4 questions | Timeout issue identified | Prompt 14 |
+| 14 | Answers to questions | 26 / 112k / 4.12M / 74k | Server, frontend, Docker, and USS | Clean checkout and XSS test | Prompt 15 |
+| 15 | UI and method decisions | 12 / 48k / 2.86M / 32k | UI and stopped for a decision | Missing concurrent writes identified | Prompt 16 |
+| 16 | Redis and Steps 18--21 | 18 / 110k / 5.66M / 73k | Measurements | 5 vulnerabilities and OOM during burst | Prompt 17 |
+| 17 | Dependencies, 1h, and documentation | 25 / 154k / 3.73M / 46k | Results and `DECISIONS.md` | Test report and 620 figure had issues | Prompt 18 |
+| 18 | Final prompt | 27 / 119k / 7.46M / 80k | 1h ramp, report, and merge | Two of its own mistakes were reported | Repeat clean-checkout run |
+| 19 | Rewrite README | 5 / 15k / 1.67M / 11k | Commit `9f82f0e` | Compared with the test report | --- |
+| **Total** |  | **203 / 1.01M / 36.98M / 564k** |  |  |  |
 
 Stages: prompts 1, 2, and 5 are Planning; 3, 4, and 6 are Scaffolding; 7 to
 15 and 17 are Implementation; 16 is Testing; 18 and 19 are Documentation. The
@@ -300,7 +222,8 @@ The prompt texts below are reproduced from the project-session history, with
 blank lines removed. Prompt 11 is two prompts sent in one message. The prompts
 were prepared with input from the project owner, Claude, and GPT.
 
-### Prompt 1
+<details>
+<summary>Prompt 1: Architecture proposal</summary>
 
 ``` text
 Read README.md in this repository carefully. It contains the challenge.
@@ -333,7 +256,10 @@ Reply to me in Persian, keeping technical terms in English.
 Ask me about anything you cannot decide on your own, then stop and wait for my approval.
 ```
 
-### Prompt 2
+</details>
+
+<details>
+<summary>Prompt 2: Approve design and Step 1</summary>
 
 ``` text
 Approved with these answers and changes. Update the plan, then start with step 1 only.
@@ -360,7 +286,10 @@ For usage, report tokensUsed and plan percentages in one short line per commit,
 and label the difference as estimated. Keep ai.md untouched.
 ```
 
-### Prompt 3
+</details>
+
+<details>
+<summary>Prompt 3: Step 2 and author correction</summary>
 
 ``` text
 Approved, with these changes before and during step 2:
@@ -377,13 +306,19 @@ Approved, with these changes before and during step 2:
 Then do step 2 only and stop.
 ```
 
-### Prompt 4
+</details>
+
+<details>
+<summary>Prompt 4: <code>/cont</code></summary>
 
 ``` text
 /cont
 ```
 
-### Prompt 5
+</details>
+
+<details>
+<summary>Prompt 5: Confirm thresholds</summary>
 
 ``` text
 I confirm the proposed thresholds as my decision, recorded as assumptions because
@@ -395,13 +330,19 @@ Reduce the measurement scope:
 Commit this change, report usage, and stop. Do not start step 3.
 ```
 
-### Prompt 6
+</details>
+
+<details>
+<summary>Prompt 6: Step 3</summary>
 
 ``` text
 Read docs/DESIGN.md, then do step 3 only.
 ```
 
-### Prompt 7
+</details>
+
+<details>
+<summary>Prompt 7: Complete document and Step 4</summary>
 
 ``` text
 Add these to docs/DESIGN.md in one small commit, without building them:
@@ -413,7 +354,10 @@ Add these to docs/DESIGN.md in one small commit, without building them:
 Then do step 4 only.
 ```
 
-### Prompt 8
+</details>
+
+<details>
+<summary>Prompt 8: Step 5</summary>
 
 ``` text
 Do step 5 only, with these decisions and reasons recorded in code comments:
@@ -424,7 +368,10 @@ Do step 5 only, with these decisions and reasons recorded in code comments:
 - Return a ValidationError with Index, Field, and Reason for the first invalid event.
 ```
 
-### Prompt 9
+</details>
+
+<details>
+<summary>Prompt 9: Step 6</summary>
 
 ``` text
 Do step 6 only, recording these decisions and reasons in code comments:
@@ -440,7 +387,10 @@ Do step 6 only, recording these decisions and reasons in code comments:
 - No cache, singleflight, limiter, or timeouts in this step.
 ```
 
-### Prompt 10
+</details>
+
+<details>
+<summary>Prompt 10: Step 7</summary>
 
 ``` text
 Read docs/DESIGN.md, then do step 7 only, recording these decisions and reasons in
@@ -463,7 +413,10 @@ boundary not joining an earlier flight, limit rejection, cancellation isolation,
 errors not cached, size limit. Run with -race and run a mutation check.
 ```
 
-### Prompt 11
+</details>
+
+<details>
+<summary>Prompt 11: Fixes and Steps 8--9</summary>
 
 ``` text
 Apply exactly, in small commits. Make no other technical decisions; if one is
@@ -487,7 +440,10 @@ Read docs/DESIGN.md, then do steps 8 and 9, one commit each:
 No mutation check. Report usage, stop.
 ```
 
-### Prompt 12
+</details>
+
+<details>
+<summary>Prompt 12: Steps 10--13</summary>
 
 ``` text
 First, one small commit each:
@@ -507,7 +463,10 @@ Then do steps 10 to 13, one commit each:
 No mutation check. If another decision is needed, stop and ask. Report usage, stop.
 ```
 
-### Prompt 13
+</details>
+
+<details>
+<summary>Prompt 13: Steps 14--17</summary>
 
 ``` text
 Your six choices in steps 10-13 are approved. Next time, ask first.
@@ -528,7 +487,10 @@ Update DESIGN.md where these add detail. No mutation check. If another decision 
 needed, stop and ask. Report usage, stop.
 ```
 
-### Prompt 14
+</details>
+
+<details>
+<summary>Prompt 14: Answers to questions</summary>
 
 ``` text
 1. Profiles: steady (constant rate) and burst (rate multiplier for a short window).
@@ -542,7 +504,10 @@ After a spike, the estimate must be between acknowledged and attempted users, wi
 the 2.43% margin. Update DESIGN.md.
 ```
 
-### Prompt 15
+</details>
+
+<details>
+<summary>Prompt 15: UI and method decisions</summary>
 
 ``` text
 Your choices in steps 14-17 are approved. Ask first next time.
@@ -560,7 +525,10 @@ the results section; that is steps 22-24. If another decision is needed, stop an
 No mutation check. Report usage, stop.
 ```
 
-### Prompt 16
+</details>
+
+<details>
+<summary>Prompt 16: Redis and Steps 18--21</summary>
 
 ``` text
 Approved, with these changes:
@@ -576,7 +544,10 @@ not choose the bucket size or fill the results section. Stop if another decision
 needed.
 ```
 
-### Prompt 17
+</details>
+
+<details>
+<summary>Prompt 17: Dependencies, 1h, and documentation</summary>
 
 ``` text
 Decisions:
@@ -601,7 +572,10 @@ Then steps 23 and 24:
 One commit each. Do not touch ai.md, push, or merge. Stop if another decision is needed.
 ```
 
-### Prompt 18
+</details>
+
+<details>
+<summary>Prompt 18: Final prompt</summary>
 
 ``` text
 This is the final prompt for this session. Read CLAUDE.md and docs/DESIGN.md first.
@@ -634,7 +608,10 @@ with a short report: commits, final numbers, anything changed by the final revie
 known limits, and total usage from the first and last get_usage readings.
 ```
 
-### Prompt 19
+</details>
+
+<details>
+<summary>Prompt 19: Rewrite README</summary>
 
 ``` text
 Rewrite README.md for a reviewer who has five minutes. Base every claim on the code,
@@ -659,6 +636,8 @@ Order:
 Keep it short, with no marketing language. Label numbers as in the report. Do not create
 or read ai.md. Do not change any other file. Commit on main in one commit. Do not push.
 ```
+
+</details>
 
 ## 4. Usage Tracking and Cost Management
 
@@ -685,13 +664,13 @@ The reporting format was:
 
 The extracted project-session figures were:
 
-  Metric                             Result
-  ------------------------------ ----------
-  Project prompts                        19
-  API calls                             203
-  Input and cache-write tokens      \~1.01M
-  Cache-read tokens                \~36.98M
-  Output tokens                      \~564K
+| Metric | Result |
+|---|---:|
+| Project prompts | 19 |
+| API calls | 203 |
+| Input and cache-write tokens | \~1.01M |
+| Cache-read tokens | \~36.98M |
+| Output tokens | \~564K |
 
 These figures cover the project session prompts and do not include the
 consultation session or context outside those records.
