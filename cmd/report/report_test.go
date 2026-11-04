@@ -174,7 +174,7 @@ func TestValidateRejectsAGapInTheTimeline(t *testing.T) {
 func TestReportShowsMachineAndCapacityWarningFirst(t *testing.T) {
 	r := committedResults(t)
 	sections := buildSections(r)
-	for name, content := range map[string]string{"markdown": renderMarkdown(r, sections), "page": renderPage(r, sections)} {
+	for name, content := range map[string]string{"markdown": renderMarkdown(r, sections), "page": renderPage(r, sections, false), "standalone": renderPage(r, sections, true)} {
 		warning := strings.Index(content, "Not production capacity")
 		model := strings.Index(content, r.Machine.Model)
 		first := strings.Index(content, sections[0].Title)
@@ -191,17 +191,24 @@ func TestReportShowsMachineAndCapacityWarningFirst(t *testing.T) {
 
 func TestPageLoadsNothingExternal(t *testing.T) {
 	r := committedResults(t)
-	page := renderPage(r, buildSections(r))
-	// The SVG namespace is an identifier, and it is never fetched.
-	page = strings.ReplaceAll(page, "http://www.w3.org/2000/svg", "")
-	for _, external := range []string{"http://", "https://", "<link", "<script", "@import", "url("} {
-		if strings.Contains(page, external) {
-			t.Errorf("page contains %s", external)
+	sections := buildSections(r)
+	for _, standalone := range []bool{false, true} {
+		page := renderPage(r, sections, standalone)
+		// The standalone copy has no frontend to link back to.
+		if strings.Contains(page, `href="/"`) == standalone {
+			t.Errorf("standalone=%t: wrong link back to the frontend", standalone)
 		}
-	}
-	for _, want := range []string{"prefers-color-scheme:dark", "color-scheme:light dark", `name="viewport"`, "overflow-x:auto"} {
-		if !strings.Contains(page, want) {
-			t.Errorf("page does not contain %q", want)
+		// The SVG namespace is an identifier, and it is never fetched.
+		page = strings.ReplaceAll(page, "http://www.w3.org/2000/svg", "")
+		for _, external := range []string{"http://", "https://", "<link", "<script", "@import", "url("} {
+			if strings.Contains(page, external) {
+				t.Errorf("standalone=%t: page contains %s", standalone, external)
+			}
+		}
+		for _, want := range []string{"prefers-color-scheme:dark", "color-scheme:light dark", `name="viewport"`, "overflow-x:auto", `class="tile"`} {
+			if !strings.Contains(page, want) {
+				t.Errorf("standalone=%t: page does not contain %q", standalone, want)
+			}
 		}
 	}
 }

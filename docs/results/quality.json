@@ -1,6 +1,6 @@
 {
   "source": "go run ./cmd/report -collect-quality, in the compose test service",
-  "generated_at": "2026-11-03T21:55:46Z",
+  "generated_at": "2026-11-04T04:56:44Z",
   "go": "go1.27.3",
   "test_command": "go test -p 1 -race -count=1 -cover -json ./...",
   "tests_passed": true,
@@ -11,7 +11,7 @@
       "passed": 19,
       "failed": 0,
       "skipped": 0,
-      "coverage_percent": 87.8
+      "coverage_percent": 88.7
     },
     {
       "name": "cmd/server",

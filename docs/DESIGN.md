@@ -427,6 +427,7 @@ then uses a few rollups plus the recent buckets.
 │   ├── DESIGN.md
 │   ├── DECISIONS.md         # each decision, why, what was rejected, and its cost
 │   ├── TEST_REPORT.md       # generated, with its charts in report/
+│   ├── test-report.html     # generated, standalone copy of the report page
 │   └── results/             # raw result summaries, with the machine
 ├── CLAUDE.md                # project rules for Claude Code
 ├── Dockerfile

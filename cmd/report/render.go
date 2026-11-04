@@ -287,7 +287,11 @@ func renderMarkdown(r results, sections []section) string {
 	for _, line := range machineLines(r.Machine) {
 		fmt.Fprintf(&b, "- %s\n", line)
 	}
-	fmt.Fprintf(&b, "\n%s\n\n", labels)
+	fmt.Fprintf(&b, "\n%s\n\n## Key results\n\n| Result | Value | Note | Label |\n|---|---:|---|---|\n", labels)
+	for _, k := range keyResults(r) {
+		fmt.Fprintf(&b, "| %s | %s | %s | %s |\n", k.Label, k.Value, k.Note, k.Tag)
+	}
+	b.WriteString("\n")
 	for _, s := range sections {
 		fmt.Fprintf(&b, "## %s\n\n", s.Title)
 		for _, p := range s.Paragraphs {
@@ -315,39 +319,123 @@ func renderMarkdown(r results, sections []section) string {
 	return strings.TrimRight(b.String(), "\n") + "\n"
 }
 
-const pageStyle = `:root{color-scheme:light dark;--page:#f5f5f2;--text:#1d1f21;--muted:#5e6469;--line:#d9d9d4;--panel:#ffffff;--notice:#fbeee6;--notice-line:#c4561f;--link:#1f5f8b}
-@media (prefers-color-scheme:dark){:root{--page:#15171a;--text:#eceded;--muted:#a2a8ad;--line:#363a3e;--panel:#1e2124;--notice:#33241b;--notice-line:#d9895f;--link:#7cb9e2}}
+const pageStyle = `:root{color-scheme:light dark;--page:#f5f5f2;--text:#1d1f21;--muted:#5e6469;--line:#d9d9d4;--panel:#ffffff;--soft:#f0efea;--notice:#fbeee6;--notice-line:#c4561f;--link:#1f5f8b}
+@media (prefers-color-scheme:dark){:root{--page:#15171a;--text:#eceded;--muted:#a2a8ad;--line:#363a3e;--panel:#1e2124;--soft:#272a2e;--notice:#33241b;--notice-line:#d9895f;--link:#7cb9e2}}
 *{box-sizing:border-box}
-body{margin:0;background:var(--page);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.5}
-main{max-width:52rem;margin:0 auto;padding:2rem 1rem}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--page);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.55}
+main{max-width:56rem;margin:0 auto;padding:2.5rem 1rem 3rem}
 a{color:var(--link)}
-h1{font-size:1.75rem;margin:.5rem 0 1rem;line-height:1.2}
-h2{font-size:1.25rem;margin:2.5rem 0 .75rem;line-height:1.25}
+.eyebrow{margin:0;color:var(--muted);font-size:.95rem;font-weight:600}
+h1{font-size:2.25rem;margin:.1rem 0 1.25rem;line-height:1.15;letter-spacing:-.01em}
+h2{font-size:1.35rem;margin:0 0 .75rem;line-height:1.25}
 p,ul{margin:0 0 .75rem}
-.notice{background:var(--notice);border-left:4px solid var(--notice-line);border-radius:.25rem;padding:.75rem 1rem;font-weight:600}
+.notice{background:var(--notice);border-left:4px solid var(--notice-line);border-radius:.375rem;padding:.85rem 1rem;font-weight:600}
 .muted{color:var(--muted);font-size:.925rem}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(13rem,1fr));gap:.75rem;margin:1.5rem 0}
+.tile{background:var(--panel);border:1px solid var(--line);border-radius:.75rem;padding:.9rem 1rem}
+.tile .label{display:block;color:var(--muted);font-size:.85rem;font-weight:600}
+.tile .value{display:block;font-size:1.5rem;font-weight:700;line-height:1.3;font-variant-numeric:tabular-nums}
+.tile .note{display:block;color:var(--muted);font-size:.85rem}
+.tag{font-style:italic}
+.toc{display:flex;flex-wrap:wrap;gap:.4rem;margin:0 0 .5rem}
+.toc a{background:var(--soft);border-radius:999px;padding:.2rem .75rem;font-size:.875rem;text-decoration:none}
+section{background:var(--panel);border:1px solid var(--line);border-radius:.75rem;padding:1.5rem;margin-top:1.25rem;scroll-margin-top:1rem}
 .scroll{overflow-x:auto;margin:0 0 1rem}
+.scroll:last-child{margin-bottom:0}
 .chart svg{display:block;width:100%;min-width:36rem;height:auto}
-table{border-collapse:collapse;width:100%;font-size:.875rem;background:var(--panel)}
-th,td{border:1px solid var(--line);padding:.35rem .6rem;text-align:left;vertical-align:top}
+table{border-collapse:collapse;width:100%;font-size:.875rem}
+th,td{border-bottom:1px solid var(--line);padding:.4rem .6rem;text-align:left;vertical-align:top}
+th{background:var(--soft);font-weight:600}
 td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+footer{margin-top:1.5rem;color:var(--muted);font-size:.85rem}
+@media (max-width:30rem){h1{font-size:1.75rem}section{padding:1rem}}
 `
 
-func renderPage(r results, sections []section) string {
+// keyResult is one headline number at the top of the report. Each one is read or
+// calculated from the results, and Tag says which.
+type keyResult struct {
+	Label, Value, Note, Tag string
+}
+
+func keyResults(r results) []keyResult {
+	saturation := keyResult{"Saturation", "none", "in the ramp", "measured"}
+	for _, step := range r.Ramp.Steps {
+		if step.Saturated {
+			saturation = keyResult{"Saturation", formatCount(step.OfferedEventsPerSecond), fmt.Sprintf("events/s, %s first-attempt acceptance", percent(step.FirstAcceptancePercent)), "measured"}
+			break
+		}
+	}
+	peakEnd := r.Burst.PeakStartSeconds + r.Burst.PeakDurationSeconds
+	recoveryValue := "not in the run"
+	if second, ok := recovery(r.Burst.Timeline, peakEnd); ok {
+		recoveryValue = fmt.Sprintf("%d s", second-peakEnd)
+	}
+	largest := 0.0
+	for _, item := range r.HLL.Results {
+		for _, value := range item.ErrorsPercent {
+			largest = max(largest, abs(value))
+		}
+	}
+	holding := 0
+	rules := decisionRules(r)
+	for _, item := range rules {
+		if item.Holds {
+			holding++
+		}
+	}
+	row, _ := r.Bench.row(r.Ramp.BucketSize)
+	passed := 0
+	for _, p := range r.Quality.Packages {
+		passed += p.Passed
+	}
+	return []keyResult{
+		{"Bucket size", r.Ramp.BucketSize, fmt.Sprintf("%d of %d rules hold", holding, len(rules)), "measured"},
+		{"Highest sustained rate", formatCount(r.Ramp.HighestSustained), "events/s", "measured"},
+		saturation,
+		{"Burst recovery", recoveryValue, fmt.Sprintf("after a %.0fx peak, at a resolution of 1 s", r.Burst.Multiplier), "calculated"},
+		{"Largest HLL error", percent(largest), fmt.Sprintf("in %d sizes of users", len(r.HLL.Results)), "measured"},
+		{"Memory", fmt.Sprintf("%.2f GB", float64(row.UsedMemoryBytes)/1e9), fmt.Sprintf("%d fully dense segments", r.Bench.Segments), "measured"},
+		{"Tests", formatCount(float64(passed)), fmt.Sprintf("passed, race detector %s", enabled(r.Quality.RaceEnabled)), "measured"},
+	}
+}
+
+// renderPage writes the page. The served page links back to the frontend, and the
+// standalone copy, which has no frontend beside it, does not.
+func renderPage(r results, sections []section, standalone bool) string {
 	var b strings.Builder
 	b.WriteString("<!doctype html>\n<!-- Generated by cmd/report from docs/results. Do not edit by hand. -->\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>Test report</title>\n<style>\n")
 	b.WriteString(pageStyle)
 	b.WriteString(svgStyle)
-	b.WriteString("\n</style>\n</head>\n<body>\n<main>\n<p><a href=\"/\">Estimation Service</a></p>\n<h1>Test report</h1>\n")
+	b.WriteString("\n</style>\n</head>\n<body>\n<main>\n")
+	if standalone {
+		b.WriteString("<p class=\"eyebrow\">Estimation Service</p>\n")
+	} else {
+		b.WriteString("<p class=\"eyebrow\"><a href=\"/\">Estimation Service</a></p>\n")
+	}
+	b.WriteString("<h1>Test report</h1>\n")
 	fmt.Fprintf(&b, "<p class=\"notice\">%s</p>\n<ul class=\"muted\">\n", html.EscapeString(banner))
 	for _, line := range machineLines(r.Machine) {
 		fmt.Fprintf(&b, "<li>%s</li>\n", html.EscapeString(line))
 	}
-	fmt.Fprintf(&b, "</ul>\n<p class=\"muted\">%s</p>\n", html.EscapeString(labels))
+	b.WriteString("</ul>\n<div class=\"tiles\">\n")
+	for _, k := range keyResults(r) {
+		fmt.Fprintf(&b, "<div class=\"tile\"><span class=\"label\">%s</span><span class=\"value\">%s</span><span class=\"note\">%s <span class=\"tag\">[%s]</span></span></div>\n",
+			html.EscapeString(k.Label), html.EscapeString(k.Value), html.EscapeString(k.Note), html.EscapeString(k.Tag))
+	}
+	fmt.Fprintf(&b, "</div>\n<p class=\"muted\">%s</p>\n<nav class=\"toc\" aria-label=\"Sections\">\n", html.EscapeString(labels))
+	for _, s := range sections {
+		fmt.Fprintf(&b, "<a href=\"#%s\">%s</a>\n", s.ID, html.EscapeString(s.Title))
+	}
+	b.WriteString("</nav>\n")
 	for _, s := range sections {
 		fmt.Fprintf(&b, "<section id=\"%s\">\n<h2>%s</h2>\n", s.ID, html.EscapeString(s.Title))
 		for _, p := range s.Paragraphs {
-			fmt.Fprintf(&b, "<p>%s</p>\n", html.EscapeString(p))
+			class := ""
+			if strings.HasPrefix(p, "Source:") {
+				class = ` class="muted"`
+			}
+			fmt.Fprintf(&b, "<p%s>%s</p>\n", class, html.EscapeString(p))
 		}
 		if s.Chart != "" {
 			fmt.Fprintf(&b, "<div class=\"scroll chart\">%s</div>\n", s.Canvas.svg(""))
@@ -369,7 +457,7 @@ func renderPage(r results, sections []section) string {
 		}
 		b.WriteString("</section>\n")
 	}
-	b.WriteString("</main>\n</body>\n</html>\n")
+	b.WriteString("<footer>Generated by cmd/report from docs/results.</footer>\n</main>\n</body>\n</html>\n")
 	return b.String()
 }
 

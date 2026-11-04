@@ -12,6 +12,18 @@
 
 Labels: [measured] was read from a run on the machine below. [calculated] is arithmetic on measured values, with no run of its own. [assumption] was chosen, not measured. Marks are separate: no line joins two points, and no value is drawn between them.
 
+## Key results
+
+| Result | Value | Note | Label |
+|---|---:|---|---|
+| Bucket size | 1h | 4 of 4 rules hold | measured |
+| Highest sustained rate | 1,024,000 | events/s | measured |
+| Saturation | 2,048,000 | events/s, 31.35% first-attempt acceptance | measured |
+| Burst recovery | 2 s | after a 10x peak, at a resolution of 1 s | calculated |
+| Largest HLL error | 2.11% | in 3 sizes of users | measured |
+| Memory | 2.43 GB | 500 fully dense segments | measured |
+| Tests | 419 | passed, race detector enabled | measured |
+
 ## Ramp and saturation
 
 1h buckets, batches of 500, 30 s per step, 1,000,000 users, 500 segments. Stopped by saturation. Highest sustained rate: 1,024,000 events per second [measured].
@@ -161,7 +173,7 @@ Source: Raw test log of TestMeasureBoundaryBurst, run before the dependency upda
 
 ## Tests, coverage, race detector, and govulncheck
 
-Collected 2026-11-03T21:55:46Z with go1.27.3: go test -p 1 -race -count=1 -cover -json ./... [measured].
+Collected 2026-11-04T04:56:44Z with go1.27.3: go test -p 1 -race -count=1 -cover -json ./... [measured].
 
 Source: go run ./cmd/report -collect-quality, in the compose test service
 
@@ -177,7 +189,7 @@ Source: go run ./cmd/report -collect-quality, in the compose test service
 
 | Package | Passed | Failed | Skipped | Coverage |
 |---|---:|---:|---:|---:|
-| cmd/report | 19 | 0 | 0 | 87.80% |
+| cmd/report | 19 | 0 | 0 | 88.70% |
 | cmd/server | 120 | 0 | 0 | 96.60% |
 | cmd/uss | 72 | 0 | 0 | 91.30% |
 | internal/estimator | 129 | 0 | 0 | 100.00% |

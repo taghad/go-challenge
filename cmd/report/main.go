@@ -23,7 +23,8 @@ func generate(r results) []output {
 	sections := buildSections(r)
 	files := []output{
 		{"docs/TEST_REPORT.md", renderMarkdown(r, sections)},
-		{"internal/web/report.html", renderPage(r, sections)},
+		{"internal/web/report.html", renderPage(r, sections, false)},
+		{"docs/test-report.html", renderPage(r, sections, true)},
 	}
 	for _, s := range sections {
 		if s.Chart != "" {
