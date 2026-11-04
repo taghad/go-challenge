@@ -156,6 +156,7 @@ docs/                             design, decisions, test report, and raw result
 - [Design](docs/DESIGN.md)
 - [Decisions](docs/DECISIONS.md)
 - [Test report](docs/TEST_REPORT.md)
+- [Test report as one HTML page](docs/test-report.html), to download and open in a browser
 - [AI usage](ai.md)
 
 ## Original challenge
